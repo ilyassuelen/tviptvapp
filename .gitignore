@@ -1,0 +1,17 @@
+# Node modules & build files
+node_modules/
+.expo/
+dist/
+build/
+web-build/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment & config
+.env
+.env.local
+.expo-shared/
+.expo/
