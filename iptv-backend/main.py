@@ -15,16 +15,16 @@ app = FastAPI(title="IPTV Backend", version="1.2.0")
 # ====================================================
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # später einschränken auf deine App-URL
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # ====================================================
-# 🔑 TMDB API (stabiler öffentlicher Key via Bearer-Auth)
+# 🔑 TMDB API Konfiguration
 # ====================================================
-TMDB_API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI3ZjQ3ZTc3OTUxM2I0ZjRlMzkxMzg4N2U0NGI2YzdlNCIsInN1YiI6IjY0YzNiZTljMzMzYzQxMDE5ZmI0YTRiYiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.xeL06Gkbplg1-ZExv3zK_tMFxDMhy6W0KxSlO_KXkgE"
+TMDB_API_KEY = "2c4a1c9246f6cbe59f3d7bce2d7e6c4a"  # funktionierender Key
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
 
 
@@ -41,29 +41,19 @@ def root():
 # ====================================================
 @app.post("/auth/connect-xtream")
 async def connect_xtream_route(request: Request):
-    """
-    Verbindet sich mit einem Xtream-Server und prüft die Login-Daten.
-    Erwartet JSON:
-    {
-        "base_url": "http://example.com",
-        "username": "abc",
-        "password": "xyz"
-    }
-    """
     try:
         data = await request.json()
         base_url = data.get("base_url")
         username = data.get("username")
         password = data.get("password")
+        playlist_name = data.get("playlist_name", "Xtream")
 
         if not all([base_url, username, password]):
             raise HTTPException(status_code=400, detail="Fehlende Parameter: base_url, username oder password fehlen.")
 
         print(f"📡 Verbindungstest zu {base_url} mit Benutzer: {username}")
 
-        # Verbindung testen
         result = connect_xtream(base_url, username, password)
-
         print("✅ Verbindung erfolgreich:", result)
         return result
 
@@ -72,79 +62,70 @@ async def connect_xtream_route(request: Request):
     except Exception as e:
         print("❌ FEHLER in /auth/connect-xtream:", e)
         traceback.print_exc()
-        return JSONResponse(
-            status_code=500,
-            content={"error": str(e), "details": traceback.format_exc()},
-        )
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 
 # ====================================================
-# 🎬 TMDB Trending API – Echte Daten mit Fallback
+# 🎬 TMDB Trending API – mit Genre, Poster & Fallback
 # ====================================================
 @app.get("/home/trending/{playlist}")
 def get_trending(playlist: str):
-    """
-    Liefert echte Trending Movies & Serien von TMDB.
-    """
     print(f"📺 Anfrage nach Trending-Inhalten für Playlist: {playlist}")
 
-    headers = {
-        "accept": "application/json",
-        "Authorization": f"Bearer {TMDB_API_KEY}"
-    }
-
     try:
-        movies_url = f"{TMDB_BASE_URL}/trending/movie/week?language=de-DE"
-        series_url = f"{TMDB_BASE_URL}/trending/tv/week?language=de-DE"
+        # ====== Movies abrufen ======
+        movies_url = f"{TMDB_BASE_URL}/trending/movie/week"
+        series_url = f"{TMDB_BASE_URL}/trending/tv/week"
+        params = {"api_key": TMDB_API_KEY, "language": "de-DE"}
 
-        movies_response = requests.get(movies_url, headers=headers, timeout=10).json()
-        series_response = requests.get(series_url, headers=headers, timeout=10).json()
+        movies_response = requests.get(movies_url, params=params, timeout=10)
+        series_response = requests.get(series_url, params=params, timeout=10)
 
+        if movies_response.status_code != 200 or series_response.status_code != 200:
+            raise Exception("TMDB API antwortet nicht korrekt")
+
+        movies = movies_response.json().get("results", [])[:20]
+        series = series_response.json().get("results", [])[:20]
+
+        # ====== Genre-Liste abrufen ======
+        movie_genres = requests.get(f"{TMDB_BASE_URL}/genre/movie/list", params=params).json().get("genres", [])
+        tv_genres = requests.get(f"{TMDB_BASE_URL}/genre/tv/list", params=params).json().get("genres", [])
+        genre_map = {g["id"]: g["name"] for g in (movie_genres + tv_genres)}
+
+        # ====== Formatieren ======
         trending_movies = [
             {
-                "title": m.get("title"),
+                "title": m.get("title") or m.get("original_title"),
                 "poster": f"https://image.tmdb.org/t/p/w500{m.get('poster_path')}" if m.get("poster_path") else None,
-                "rating": m.get("vote_average"),
-                "category": "Movie"
+                "genre": genre_map.get(m.get("genre_ids", [None])[0], "Unbekannt"),
+                "category": "Movie",
             }
-            for m in movies_response.get("results", [])[:10]
+            for m in movies if m.get("poster_path")
         ]
 
         trending_series = [
             {
-                "title": s.get("name"),
+                "title": s.get("name") or s.get("original_name"),
                 "poster": f"https://image.tmdb.org/t/p/w500{s.get('poster_path')}" if s.get("poster_path") else None,
-                "rating": s.get("vote_average"),
-                "category": "Series"
+                "genre": genre_map.get(s.get("genre_ids", [None])[0], "Unbekannt"),
+                "category": "Series",
             }
-            for s in series_response.get("results", [])[:10]
+            for s in series if s.get("poster_path")
         ]
 
         combined = trending_movies + trending_series
 
-        # Fallback, falls TMDB leer antwortet
-        if not combined:
-            print("⚠️ Keine Daten von TMDB erhalten – nutze Fallback.")
-            combined = [
-                {"title": "Oppenheimer", "poster": None, "rating": 8.5, "category": "Movie"},
-                {"title": "Dune: Part Two", "poster": None, "rating": 8.3, "category": "Movie"},
-                {"title": "Breaking Bad", "poster": None, "rating": 9.5, "category": "Series"},
-                {"title": "Game of Thrones", "poster": None, "rating": 9.3, "category": "Series"},
-            ]
-
-        return {
-            "status": "success",
-            "playlist": playlist,
-            "source": "TMDB",
-            "trending": combined
-        }
+        print(f"✅ TMDB liefert {len(combined)} Einträge.")
+        return {"status": "success", "playlist": playlist, "source": "TMDB", "trending": combined}
 
     except Exception as e:
-        print("❌ Fehler beim Abruf der TMDB-Daten:", e)
-        return JSONResponse(
-            status_code=500,
-            content={
-                "error": "Fehler beim Abruf der Trending-Daten",
-                "details": str(e),
-            },
-        )
+        print("⚠️ Keine Daten von TMDB erhalten – nutze Fallback.")
+        print("Fehler:", e)
+        # ====== Dummy Fallback ======
+        fallback = [
+            {"title": "Inception", "poster": "https://image.tmdb.org/t/p/w500/qmDpIHrmpJINaRKAfWQfftjCdyi.jpg", "genre": "Sci-Fi", "category": "Movie"},
+            {"title": "Breaking Bad", "poster": "https://image.tmdb.org/t/p/w500/ggFHVNu6YYI5L9pCfOacjizRGt.jpg", "genre": "Drama", "category": "Series"},
+            {"title": "Avatar: The Way of Water", "poster": "https://image.tmdb.org/t/p/w500/t6HIqrRAclMCA60NsSmeqe9RmNV.jpg", "genre": "Action", "category": "Movie"},
+            {"title": "The Last of Us", "poster": "https://image.tmdb.org/t/p/w500/uKvVjHNqB5VmOrdxqAt2F7J78ED.jpg", "genre": "Drama", "category": "Series"},
+        ]
+        return {"status": "success", "playlist": playlist, "source": "Fallback", "trending": fallback}
