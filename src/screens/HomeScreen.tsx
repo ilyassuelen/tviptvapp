@@ -30,8 +30,8 @@ export default function HomeScreen() {
   const spinAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  const MOVIES_URL = "http://192.168.2.101:8000/iptv/movies";
-  const SERIES_URL = "http://192.168.2.101:8000/iptv/series";
+  const MOVIES_URL = "http://87.106.10.34:8000/iptv/movies";
+  const SERIES_URL = "http://87.106.10.34:8000/iptv/series";
 
   const languageLabels: Record<string, string> = {
     DE: "Deutsch",

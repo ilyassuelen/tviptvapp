@@ -39,7 +39,7 @@ export default function MoviesScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-80)).current;
 
-  const BACKEND_URL = "http://192.168.2.101:8000/iptv/movies";
+  const BACKEND_URL = "http://87.106.10.34:8000/iptv/movies";
 
   // ===============================
   // 📦 Daten laden

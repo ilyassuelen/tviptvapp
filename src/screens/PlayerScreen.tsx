@@ -67,7 +67,7 @@ export default function PlayerScreen({ route, navigation }: any) {
       const ch = currentChannel;
       let streamUrl = ch.stream_url;
       if (ch.stream_id && !streamUrl?.includes("/live/")) {
-        const resp = await fetch("http://192.168.2.101:8000/sessions.json");
+        const resp = await fetch("http://87.106.10.34:8000/sessions.json");
         const data = await resp.json();
         streamUrl = `${data.base_url}/live/${data.username}/${data.password}/${ch.stream_id}.m3u8`;
       }

@@ -249,7 +249,7 @@ export default function SeriesDetailScreen() {
   // 🎞 Serien-Episoden laden
   async function loadSeriesData(seriesId: string | number) {
     try {
-      const resp = await fetch("http://192.168.2.101:8000/sessions.json");
+      const resp = await fetch("http://87.106.10.34:8000/sessions.json");
       const data = await resp.json();
       const base = data.base_url;
       const user = data.username;
