@@ -8,7 +8,7 @@ import re
 import json
 from urllib.parse import urlparse, unquote
 
-PROXY_BASE = "http://87.106.10.34:8085/proxy?url="
+PROXY_BASE = "http://100.122.12.116:8085/proxy?url="
 
 # ====================================================
 # 🚀 IPTV Backend – Haupt-App

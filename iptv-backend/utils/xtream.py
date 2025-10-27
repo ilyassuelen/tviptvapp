@@ -1,7 +1,7 @@
 import requests
 from urllib.parse import urlparse
 
-PROXY_BASE = "http://87.106.10.34:8085/proxy?url="
+PROXY_BASE = "http://100.122.12.116:8085/proxy?url="
 
 
 def connect_xtream(base_url: str, username: str, password: str):
