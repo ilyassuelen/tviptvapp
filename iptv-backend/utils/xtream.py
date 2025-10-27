@@ -45,15 +45,8 @@ def connect_xtream(base_url: str, username: str, password: str):
         response.raise_for_status()
         data = response.json()
     except requests.exceptions.ConnectionError:
-        if not base_url.startswith("https"):
-            https_url = base_url.replace("http://", "https://", 1)
-            print(f"🔁 HTTP fehlgeschlagen, versuche HTTPS: {https_url}")
-            api_url = f"{https_url.rstrip('/')}/player_api.php?username={username}&password={password}"
-            response = requests.get(f"{PROXY_BASE}{api_url}", headers=headers, timeout=10, verify=False)
-            response.raise_for_status()
-            data = response.json()
-        else:
-            raise Exception("Keine Verbindung möglich – Server offline oder URL blockiert.")
+        print("⚠️ HTTP fehlgeschlagen – HTTPS wird NICHT versucht (Server unterstützt kein HTTPS)")
+        raise Exception("Verbindung zum Xtream-Server (HTTP) fehlgeschlagen.")
     except requests.exceptions.Timeout:
         raise Exception("Zeitüberschreitung – Server antwortet zu langsam.")
     except requests.exceptions.HTTPError as e:

@@ -81,10 +81,8 @@ async def connect_xtream_route(request: Request):
             response = session.get(f"{PROXY_BASE}{api_url}", timeout=10)
             response.raise_for_status()
         except requests.exceptions.ConnectionError:
-            https_url = api_url.replace("http://", "https://", 1)
-            print(f"⚠️ HTTP fehlgeschlagen – versuche HTTPS: {https_url}")
-            response = session.get(https_url, timeout=10, verify=False)
-            response.raise_for_status()
+            print("⚠️ HTTP fehlgeschlagen – HTTPS wird NICHT versucht (Server unterstützt kein HTTPS)")
+            raise HTTPException(status_code=502, detail="Verbindung zum Xtream-Server (HTTP) fehlgeschlagen.")
 
         data_json = response.json()
         user_info = data_json.get("user_info", {})
