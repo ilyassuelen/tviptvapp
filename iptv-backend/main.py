@@ -8,6 +8,8 @@ import re
 import json
 from urllib.parse import urlparse, unquote
 
+PROXY_BASE = "http://87.106.10.34:8085/proxy?url="
+
 # ====================================================
 # 🚀 IPTV Backend – Haupt-App
 # ====================================================
@@ -76,7 +78,7 @@ async def connect_xtream_route(request: Request):
 
         # Verbindung prüfen
         try:
-            response = session.get(api_url, timeout=10)
+            response = session.get(f"{PROXY_BASE}{api_url}", timeout=10)
             response.raise_for_status()
         except requests.exceptions.ConnectionError:
             https_url = api_url.replace("http://", "https://", 1)
@@ -98,14 +100,14 @@ async def connect_xtream_route(request: Request):
         print("📥 Lade Kategorien, Kanäle, Filme & Serien ...")
 
         # Live-Daten
-        cat_response = session.get(server_url, params={**params, "action": "get_live_categories"}, timeout=20)
-        ch_response = session.get(server_url, params={**params, "action": "get_live_streams"}, timeout=30)
+        cat_response = session.get(f"{PROXY_BASE}{server_url}", params={**params, "action": "get_live_categories"}, timeout=20)
+        ch_response = session.get(f"{PROXY_BASE}{server_url}", params={**params, "action": "get_live_streams"}, timeout=30)
 
         # Film- und Serien-Daten
-        vod_cat_response = session.get(server_url, params={**params, "action": "get_vod_categories"}, timeout=20)
-        vod_response = session.get(server_url, params={**params, "action": "get_vod_streams"}, timeout=30)
-        series_cat_response = session.get(server_url, params={**params, "action": "get_series_categories"}, timeout=20)
-        series_response = session.get(server_url, params={**params, "action": "get_series"}, timeout=30)
+        vod_cat_response = session.get(f"{PROXY_BASE}{server_url}", params={**params, "action": "get_vod_categories"}, timeout=20)
+        vod_response = session.get(f"{PROXY_BASE}{server_url}", params={**params, "action": "get_vod_streams"}, timeout=30)
+        series_cat_response = session.get(f"{PROXY_BASE}{server_url}", params={**params, "action": "get_series_categories"}, timeout=20)
+        series_response = session.get(f"{PROXY_BASE}{server_url}", params={**params, "action": "get_series"}, timeout=30)
 
         # Ergebnisse
         categories = cat_response.json() if cat_response.status_code == 200 else []

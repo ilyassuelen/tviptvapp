@@ -1,6 +1,8 @@
 import requests
 from urllib.parse import urlparse
 
+PROXY_BASE = "http://87.106.10.34:8085/proxy?url="
+
 
 def connect_xtream(base_url: str, username: str, password: str):
     """
@@ -39,7 +41,7 @@ def connect_xtream(base_url: str, username: str, password: str):
     # 🔌 Verbindung prüfen
     # ========================================
     try:
-        response = requests.get(api_url, headers=headers, timeout=10)
+        response = requests.get(f"{PROXY_BASE}{api_url}", headers=headers, timeout=10)
         response.raise_for_status()
         data = response.json()
     except requests.exceptions.ConnectionError:
@@ -47,7 +49,7 @@ def connect_xtream(base_url: str, username: str, password: str):
             https_url = base_url.replace("http://", "https://", 1)
             print(f"🔁 HTTP fehlgeschlagen, versuche HTTPS: {https_url}")
             api_url = f"{https_url.rstrip('/')}/player_api.php?username={username}&password={password}"
-            response = requests.get(api_url, headers=headers, timeout=10, verify=False)
+            response = requests.get(f"{PROXY_BASE}{api_url}", headers=headers, timeout=10, verify=False)
             response.raise_for_status()
             data = response.json()
         else:
@@ -81,19 +83,19 @@ def connect_xtream(base_url: str, username: str, password: str):
     params = {"username": username, "password": password}
 
     # Live-Kategorien abrufen
-    cat_response = requests.get(server_url, params={**params, "action": "get_live_categories"}, timeout=10)
+    cat_response = requests.get(f"{PROXY_BASE}{server_url}", params={**params, "action": "get_live_categories"}, timeout=10)
     live_categories = cat_response.json() if cat_response.status_code == 200 else []
 
     # Live-Sender abrufen
-    ch_response = requests.get(server_url, params={**params, "action": "get_live_streams"}, timeout=15)
+    ch_response = requests.get(f"{PROXY_BASE}{server_url}", params={**params, "action": "get_live_streams"}, timeout=15)
     live_channels = ch_response.json() if ch_response.status_code == 200 else []
 
     # 🎬 Filme abrufen
-    vod_response = requests.get(server_url, params={**params, "action": "get_vod_streams"}, timeout=15)
+    vod_response = requests.get(f"{PROXY_BASE}{server_url}", params={**params, "action": "get_vod_streams"}, timeout=15)
     movies = vod_response.json() if vod_response.status_code == 200 else []
 
     # 📺 Serien abrufen
-    series_response = requests.get(server_url, params={**params, "action": "get_series"}, timeout=15)
+    series_response = requests.get(f"{PROXY_BASE}{server_url}", params={**params, "action": "get_series"}, timeout=15)
     series = series_response.json() if series_response.status_code == 200 else []
 
     print(
