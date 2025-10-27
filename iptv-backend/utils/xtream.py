@@ -1,11 +1,11 @@
 import requests
 from urllib.parse import urlparse
 
+
 def connect_xtream(base_url: str, username: str, password: str):
     """
-    Baut eine stabile Verbindung zum Xtream-Server auf und liefert Benutzer- und Serverinformationen zurück.
-    Funktioniert mit automatischer HTTPS-Erkennung und Header-Simulation,
-    damit der Server die Verbindung nicht blockiert.
+    Baut eine stabile Verbindung zum Xtream-Server auf, prüft Login
+    und lädt zusätzlich Kategorien, Kanäle, Filme und Serien.
     """
 
     # ========================================
@@ -14,7 +14,6 @@ def connect_xtream(base_url: str, username: str, password: str):
     if not base_url:
         raise Exception("Fehler: Keine Base-URL angegeben.")
 
-    # Falls Nutzer nur 'm3u.best-smarter.me' eingibt → automatisch http:// hinzufügen
     if not base_url.startswith("http"):
         base_url = "http://" + base_url
 
@@ -25,39 +24,32 @@ def connect_xtream(base_url: str, username: str, password: str):
     api_url = f"{clean_url.rstrip('/')}/player_api.php?username={username}&password={password}"
     print(f"🌍 Prüfe Verbindung zu: {api_url}")
 
-    # ========================================
-    # 🧠 Header simulieren (wie ein Browser)
-    # ========================================
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                      "AppleWebKit/537.36 (KHTML, like Gecko) "
-                      "Chrome/120.0 Safari/537.36",
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/120.0 Safari/537.36"
+        ),
         "Accept": "application/json, text/plain, */*",
         "Connection": "keep-alive",
         "Accept-Encoding": "gzip, deflate",
     }
 
+    # ========================================
+    # 🔌 Verbindung prüfen
+    # ========================================
     try:
-        # ========================================
-        # 🌐 Hauptversuch mit HTTP
-        # ========================================
         response = requests.get(api_url, headers=headers, timeout=10)
         response.raise_for_status()
         data = response.json()
     except requests.exceptions.ConnectionError:
-        # ========================================
-        # 🔁 Automatischer HTTPS-Fallback
-        # ========================================
         if not base_url.startswith("https"):
             https_url = base_url.replace("http://", "https://", 1)
             print(f"🔁 HTTP fehlgeschlagen, versuche HTTPS: {https_url}")
-            try:
-                api_url = f"{https_url.rstrip('/')}/player_api.php?username={username}&password={password}"
-                response = requests.get(api_url, headers=headers, timeout=10, verify=False)
-                response.raise_for_status()
-                data = response.json()
-            except Exception as e:
-                raise Exception(f"Keine Verbindung möglich – weder HTTP noch HTTPS erfolgreich.\nDetails: {e}")
+            api_url = f"{https_url.rstrip('/')}/player_api.php?username={username}&password={password}"
+            response = requests.get(api_url, headers=headers, timeout=10, verify=False)
+            response.raise_for_status()
+            data = response.json()
         else:
             raise Exception("Keine Verbindung möglich – Server offline oder URL blockiert.")
     except requests.exceptions.Timeout:
@@ -82,9 +74,46 @@ def connect_xtream(base_url: str, username: str, password: str):
 
     print(f"✅ Verbindung erfolgreich – Benutzer: {username}, Status: {user_info.get('status')}")
 
+    # ========================================
+    # 📺 Kategorien, Kanäle, Filme & Serien abrufen
+    # ========================================
+    server_url = f"{clean_url.rstrip('/')}/player_api.php"
+    params = {"username": username, "password": password}
+
+    # Live-Kategorien abrufen
+    cat_response = requests.get(server_url, params={**params, "action": "get_live_categories"}, timeout=10)
+    live_categories = cat_response.json() if cat_response.status_code == 200 else []
+
+    # Live-Sender abrufen
+    ch_response = requests.get(server_url, params={**params, "action": "get_live_streams"}, timeout=15)
+    live_channels = ch_response.json() if ch_response.status_code == 200 else []
+
+    # 🎬 Filme abrufen
+    vod_response = requests.get(server_url, params={**params, "action": "get_vod_streams"}, timeout=15)
+    movies = vod_response.json() if vod_response.status_code == 200 else []
+
+    # 📺 Serien abrufen
+    series_response = requests.get(server_url, params={**params, "action": "get_series"}, timeout=15)
+    series = series_response.json() if series_response.status_code == 200 else []
+
+    print(
+        f"📊 Übersicht:\n"
+        f"  🧭 {len(live_categories)} Live-Kategorien\n"
+        f"  📺 {len(live_channels)} Live-Kanäle\n"
+        f"  🎬 {len(movies)} Filme (VOD)\n"
+        f"  📚 {len(series)} Serien"
+    )
+
+    # ========================================
+    # 🧾 Rückgabe
+    # ========================================
     return {
         "status": "success",
         "message": "✅ Verbindung erfolgreich",
         "user_info": user_info,
         "server_info": data.get("server_info"),
+        "categories": live_categories,
+        "channels": live_channels,
+        "movies": movies,   # ✅ Neu hinzugefügt
+        "series": series    # ✅ Neu hinzugefügt
     }

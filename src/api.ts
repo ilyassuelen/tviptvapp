@@ -1,38 +1,41 @@
 import axios from "axios";
 import { Platform } from "react-native";
 
-// ✅ Automatische Backend-Erkennung
-// - Web: nutzt localhost (Browser)
-// - Mobile (Expo Go): nutzt deine lokale IP
-// - Tunnel (Expo Go via exp.direct): erkennt automatisch die korrekte URL
-
-const LOCAL_IP = "192.168.2.101"; // <- IP deines Macs im WLAN
+// =========================================
+// 🌐 Automatische Backend-Erkennung
+// =========================================
+const LOCAL_IP = "192.168.2.101"; // 👈 IP deines Macs im WLAN
 const API_BASE =
   Platform.OS === "web"
     ? "http://localhost:8000"
     : `http://${LOCAL_IP}:8000`;
 
-console.log("🌐 Verbunden mit Backend:", API_BASE);
+console.log("🌍 Verbunden mit Backend:", API_BASE);
 
-// ===============================
-// 🔗 API-Endpunkte
-// ===============================
+// ===================================================
+// 🔐 LOGIN / VERBINDUNGEN
+// ===================================================
 
-// Verbinde M3U-Playlist
+// M3U-Playlist verbinden
 export async function connectM3U(m3u_url: string, playlist_name = "M3U") {
   try {
+    console.log("📡 Sende M3U-Verbindung...");
     const response = await axios.post(`${API_BASE}/auth/connect-m3u`, {
       m3u_url,
       playlist_name,
     });
+    console.log("✅ M3U-Verbindung erfolgreich:", response.data);
     return response.data;
   } catch (error: any) {
     console.error("❌ Fehler bei connectM3U:", error?.response?.data || error);
-    throw error;
+    throw new Error(
+      error?.response?.data?.detail ||
+        "Fehler bei M3U-Verbindung – bitte Link prüfen."
+    );
   }
 }
 
-// Verbinde Xtream-Account
+// Xtream-Account verbinden
 export async function connectXtream(
   base_url: string,
   username: string,
@@ -40,20 +43,27 @@ export async function connectXtream(
   playlist_name = "Xtream"
 ) {
   try {
+    console.log("📡 Sende Xtream-Verbindung...");
     const response = await axios.post(`${API_BASE}/auth/connect-xtream`, {
       base_url,
       username,
       password,
       playlist_name,
     });
+    console.log("✅ Xtream-Verbindung erfolgreich:", response.data);
     return response.data;
   } catch (error: any) {
     console.error("❌ Fehler bei connectXtream:", error?.response?.data || error);
-    throw error;
+    throw new Error(
+      error?.response?.data?.detail ||
+        "Fehler bei Xtream-Verbindung – bitte Zugangsdaten prüfen."
+    );
   }
 }
 
-// Hole "Trending"-Inhalte
+// ===================================================
+// 🎬 TMDB Trending (Startseite)
+// ===================================================
 export async function fetchTrending(playlist: string) {
   try {
     const { data } = await axios.get(
@@ -62,20 +72,36 @@ export async function fetchTrending(playlist: string) {
     return data;
   } catch (error: any) {
     console.error("❌ Fehler bei fetchTrending:", error?.response?.data || error);
-    throw error;
+    throw new Error("Fehler beim Laden der Trending-Inhalte");
   }
 }
 
-// Suche Inhalte global
-export async function searchAll(playlist: string, q: string) {
+// ===================================================
+// 📺 IPTV-Kategorien & Kanäle
+// ===================================================
+export async function fetchIPTVCategories() {
   try {
-    const { data } = await axios.get(
-      `${API_BASE}/search/${encodeURIComponent(playlist)}`,
-      { params: { q } }
-    );
+    const { data } = await axios.get(`${API_BASE}/iptv/categories`);
     return data;
   } catch (error: any) {
-    console.error("❌ Fehler bei searchAll:", error?.response?.data || error);
-    throw error;
+    console.error("❌ Fehler bei fetchIPTVCategories:", error?.response?.data || error);
+    throw new Error(
+      error?.response?.data?.detail || "Fehler beim Laden der Kategorien"
+    );
+  }
+}
+
+export async function fetchIPTVChannels(category: string) {
+  try {
+    const { data } = await axios.get(`${API_BASE}/iptv/channels`, {
+      params: { category },
+    });
+    return data;
+  } catch (error: any) {
+    console.error("❌ Fehler bei fetchIPTVChannels:", error?.response?.data || error);
+    throw new Error(
+      error?.response?.data?.detail ||
+        `Fehler beim Laden der Sender (${category})`
+    );
   }
 }
