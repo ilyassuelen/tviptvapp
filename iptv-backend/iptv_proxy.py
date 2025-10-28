@@ -2,6 +2,7 @@ from flask import Flask, request, Response, jsonify, stream_with_context
 import requests
 from urllib.parse import urljoin, quote, urlparse
 import urllib3
+import re
 
 # 🔇 SSL-Warnungen deaktivieren
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -46,12 +47,21 @@ def proxy_request():
             "User-Agent": session.headers["User-Agent"],
         }
 
-        # 📦 Wenn .ts/.mp4 → Range + Referer
+        # 📦 Wenn .ts/.mp4 → Range + dynamischer Referer anhand Token
         if target_url.endswith(".ts") or target_url.endswith(".mp4"):
             headers["Range"] = request.headers.get("Range", "bytes=0-")
-            referer_m3u8 = session.headers.get("Last-M3U8", base_domain + "/")
+
+            # 🔍 Token im /hls/<token>/ Pfad erkennen
+            match = re.search(r"/hls/([a-z0-9]+)/", target_url)
+            if match:
+                token = match.group(1)
+                referer_m3u8 = f"http://m3u.best-smarter.me/hls/{token}/index.m3u8"
+                print(f"📎 Token erkannt: {token} → Referer gesetzt auf {referer_m3u8}")
+            else:
+                referer_m3u8 = session.headers.get("Last-M3U8", base_domain + "/")
+                print(f"📎 Kein Token → Standard-Referer: {referer_m3u8}")
+
             headers["Referer"] = referer_m3u8
-            print(f"📎 TS-Referer gesetzt auf: {referer_m3u8}")
 
         # 🎞️ Wenn M3U8 → merken
         if target_url.endswith(".m3u8"):
@@ -63,6 +73,7 @@ def proxy_request():
 
             session.cookies.update(r.cookies)
             if r.status_code >= 400:
+                print(f"❌ Fehlerantwort ({r.status_code}) von {target_url}")
                 return Response(r.text, status=r.status_code)
 
             content_type = r.headers.get("Content-Type", "").lower()
