@@ -27,7 +27,8 @@
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
-          <string>com.anonymous.iptvapp</string>
+          <string>iptvapp</string>
+          <string>com.ilyassulen.iptvapp</string>
         </array>
       </dict>
     </array>
@@ -40,9 +41,21 @@
     <key>NSAppTransportSecurity</key>
     <dict>
       <key>NSAllowsArbitraryLoads</key>
-      <false/>
+      <true/>
       <key>NSAllowsLocalNetworking</key>
       <true/>
+      <key>NSExceptionDomains</key>
+      <dict>
+        <key>m3u.best-smarter.me</key>
+        <dict>
+          <key>NSIncludesSubdomains</key>
+          <true/>
+          <key>NSTemporaryExceptionAllowsInsecureHTTPLoads</key>
+          <true/>
+          <key>NSTemporaryExceptionMinimumTLSVersion</key>
+          <string>TLSv1.0</string>
+        </dict>
+      </dict>
     </dict>
     <key>NSMicrophoneUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your microphone</string>

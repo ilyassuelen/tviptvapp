@@ -1,4 +1,4 @@
-package com.anonymous.iptvapp
+package com.ilyassulen.iptvapp
 
 import android.os.Build
 import android.os.Bundle

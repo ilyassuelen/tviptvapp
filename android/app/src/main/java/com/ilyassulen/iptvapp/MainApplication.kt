@@ -1,4 +1,4 @@
-package com.anonymous.iptvapp
+package com.ilyassulen.iptvapp
 
 import android.app.Application
 import android.content.res.Configuration
