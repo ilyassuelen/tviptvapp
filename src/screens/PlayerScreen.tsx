@@ -17,11 +17,23 @@ import * as ScreenOrientation from "expo-screen-orientation";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { buildStreamUrl } from "../api/xtreamApi";  // ✅ Neu
+import { buildStreamUrl } from "../api/xtreamApi";
 
 export default function PlayerScreen({ route, navigation }: any) {
   const { channels, currentIndex, session: sessionFromRoute } = route.params;
   const [session, setSession] = useState<any>(sessionFromRoute || null);
+  const [selectedIndex, setSelectedIndex] = useState(currentIndex);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [showControls, setShowControls] = useState(false);
+  const [currentUrl, setCurrentUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const videoRef = useRef<Video>(null);
+  const progress = useRef(new Animated.Value(0)).current;
+  const { width: SW, height: SH } = Dimensions.get("window");
+
+  const currentChannel = channels[selectedIndex];
 
   // 🔁 Falls keine Session übergeben wurde → aus AsyncStorage laden
   useEffect(() => {
@@ -41,21 +53,6 @@ export default function PlayerScreen({ route, navigation }: any) {
     })();
   }, []);
 
-  const [selectedIndex, setSelectedIndex] = useState(currentIndex);
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [showControls, setShowControls] = useState(false);
-  const [currentUrl, setCurrentUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-
-  const videoRef = useRef<Video>(null);
-  const progress = useRef(new Animated.Value(0)).current;
-  const { width: SW, height: SH } = Dimensions.get("window");
-
-  const currentChannel = channels[selectedIndex];
-
-  // 🔊 Audio-Modus
   useFocusEffect(
     React.useCallback(() => {
       (async () => {
@@ -74,7 +71,6 @@ export default function PlayerScreen({ route, navigation }: any) {
     }, [])
   );
 
-  // 📺 Stream laden
   useEffect(() => {
     (async () => {
       await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_RIGHT);
@@ -82,7 +78,6 @@ export default function PlayerScreen({ route, navigation }: any) {
     })();
   }, [selectedIndex]);
 
-  // 🔁 Wenn Session nachträglich geladen wird → Stream erneut starten
   useEffect(() => {
     if (session && !currentUrl && !loading) {
       console.log("🔁 Session jetzt verfügbar – starte Stream erneut");
@@ -90,7 +85,8 @@ export default function PlayerScreen({ route, navigation }: any) {
     }
   }, [session]);
 
-  const startStream = async () => {
+  // 🧠 smarter Stream-Start mit alternativen Fallbacks
+  const startStream = async (retryVariant = 0) => {
     try {
       setLoading(true);
       const ch = currentChannel;
@@ -101,17 +97,17 @@ export default function PlayerScreen({ route, navigation }: any) {
         return;
       }
 
-      // ✅ Stream-URL über Xtream API bauen
+      // 🧩 Stream-URL über Xtream API bauen
       let streamUrl = await buildStreamUrl(session, ch.stream_id, ch.stream_type);
-      // 🧩 Falls Film oder Serie → Dateiendung auf .mp4 setzen
-      if (ch.stream_type?.toLowerCase().includes("movie") || ch.stream_type?.toLowerCase().includes("series")) {
-        if (streamUrl.endsWith(".m3u8")) {
-          streamUrl = streamUrl.replace(".m3u8", ".mp4");
-        }
-      }
-      console.log("🎬 Finaler Stream-URL:", streamUrl);
+
+      // 🔁 Smarters-like Retry-System bei Filmen/Serien
+      if (retryVariant === 1) streamUrl = streamUrl.replace(".m3u8", ".mp4");
+      if (retryVariant === 2) streamUrl = streamUrl.replace(".mp4", ".ts");
+
+      console.log(`🎬 Lade Stream (Versuch ${retryVariant + 1}): ${streamUrl}`);
 
       setCurrentUrl(streamUrl);
+      setErrorMsg(null);
 
       if (videoRef.current) {
         await videoRef.current.unloadAsync().catch(() => {});
@@ -132,26 +128,24 @@ export default function PlayerScreen({ route, navigation }: any) {
 
       setIsPlaying(true);
 
-      // 🧠 Verlauf speichern
       const historyRaw = await AsyncStorage.getItem("stream_history");
       const history = historyRaw ? JSON.parse(historyRaw) : [];
-      const newEntry = {
-        ...ch,
-        stream_url: streamUrl,
-        timestamp: Date.now(),
-      };
+      const newEntry = { ...ch, stream_url: streamUrl, timestamp: Date.now() };
       const updated = [newEntry, ...history.filter((h: any) => h.name !== ch.name)].slice(0, 10);
       await AsyncStorage.setItem("stream_history", JSON.stringify(updated));
-
     } catch (err) {
       console.log("❌ Fehler beim Streamstart:", err);
-      setErrorMsg("Fehler beim Streamstart");
+      if (retryVariant < 2) {
+        console.log("🔁 Versuche alternative URL...");
+        await startStream(retryVariant + 1);
+      } else {
+        setErrorMsg("Stream konnte nicht geladen werden.");
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // 🔙 Zurück
   const handleBack = async () => {
     try {
       if (videoRef.current) await videoRef.current.unloadAsync();
@@ -163,7 +157,6 @@ export default function PlayerScreen({ route, navigation }: any) {
     }
   };
 
-  // 🧭 Vollbild-Toggle
   const enterFullscreen = () => {
     setIsFullscreen(true);
     Animated.timing(progress, {
@@ -206,7 +199,6 @@ export default function PlayerScreen({ route, navigation }: any) {
 
   const handleVideoPress = () => setShowControls((p) => !p);
 
-  // 📐 Animierte Video-Position/Größe
   const videoStyle = {
     position: "absolute",
     left: progress.interpolate({ inputRange: [0, 1], outputRange: [SW * 0.35, 0] }),
@@ -219,7 +211,6 @@ export default function PlayerScreen({ route, navigation }: any) {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.headerRow}>
         <TouchableOpacity style={styles.backHeaderBtn} onPress={handleBack}>
           <Ionicons name="arrow-back" size={22} color="#fff" />
@@ -227,9 +218,7 @@ export default function PlayerScreen({ route, navigation }: any) {
         </TouchableOpacity>
       </View>
 
-      {/* Split */}
       <View style={styles.splitContainer}>
-        {/* Linke Senderliste */}
         <View style={styles.leftPane}>
           <FlatList
             data={channels}
@@ -262,7 +251,6 @@ export default function PlayerScreen({ route, navigation }: any) {
           />
         </View>
 
-        {/* Rechte Seite – Player */}
         <View style={styles.rightPane}>
           {loading ? (
             <View style={[styles.center, { flex: 1 }]}>
@@ -275,7 +263,6 @@ export default function PlayerScreen({ route, navigation }: any) {
         </View>
       </View>
 
-      {/* Eine Video-Instanz – bewegt sich zwischen Split und Vollbild */}
       {currentUrl && (
         <Animated.View style={videoStyle}>
           <TouchableOpacity
@@ -298,11 +285,16 @@ export default function PlayerScreen({ route, navigation }: any) {
               shouldPlay={isPlaying}
               resizeMode="contain"
               useNativeControls={false}
-              onError={(error) => console.log("❌ Video-Fehler:", error)}
+              onError={async (error) => {
+                console.log("❌ Video-Fehler:", error);
+                if (error?.error?.code === -1008 || error?.error?.code === -1002) {
+                  console.log("🔁 iOS-Fehler erkannt – versuche alternative Endung...");
+                  await startStream(1);
+                }
+              }}
             />
           </TouchableOpacity>
 
-          {/* Overlay-Steuerung */}
           {isFullscreen && showControls && (
             <View style={styles.overlay}>
               <TouchableOpacity
