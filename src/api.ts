@@ -4,7 +4,7 @@ import { Platform } from "react-native";
 // =========================================
 // 🌐 Automatische Backend-Erkennung
 // =========================================
-const LOCAL_IP = "87.106.10.34"; // 👈 IP deines Strato-Servers
+const LOCAL_IP = "192.168.2.101"; // deine lokale IP aus ifconfig
 const API_BASE = `http://${LOCAL_IP}:8000`;
 
 console.log("🌍 Verbunden mit Backend:", API_BASE);

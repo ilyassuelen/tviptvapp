@@ -9,8 +9,8 @@ import {
   Platform,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { connectXtream, connectM3U } from "../api";
 import { useNavigation } from "@react-navigation/native";
+import { loginXtream, getLiveStreams } from "../api/xtreamApi"; // ✅ neue Xtream-API
 
 export default function LoginScreen() {
   const navigation = useNavigation<any>();
@@ -20,12 +20,12 @@ export default function LoginScreen() {
   const [statusLine, setStatusLine] = useState("Warte auf Eingabe...");
   const [message, setMessage] = useState<string | null>(null);
 
-  const [baseUrl, setBaseUrl] = useState("");
+  const [baseUrl, setBaseUrl] = useState("http://m3u.best-smarter.me");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [m3uUrl, setM3uUrl] = useState("");
 
-  // 🔁 Automatisch weiterleiten, wenn Session existiert
+  // 🔁 Wenn gespeicherte Session vorhanden → MainTabs öffnen
   useEffect(() => {
     (async () => {
       const saved = await AsyncStorage.getItem("iptv_session");
@@ -42,36 +42,45 @@ export default function LoginScreen() {
       setMessage(null);
       setStatusLine("🔗 Verbinde mit Server...");
 
-      let res;
       if (mode === "m3u") {
-        if (!m3uUrl.trim()) {
-          setMessage("❌ Bitte M3U-Link eingeben");
-          return;
-        }
-        res = await connectM3U(m3uUrl);
-      } else {
-        if (!baseUrl || !username || !password) {
-          setMessage("❌ Bitte alle Xtream-Felder ausfüllen");
-          return;
-        }
-        res = await connectXtream(baseUrl, username, password);
+        setMessage("⚠️ M3U-Modus ist noch nicht aktiviert – bitte Xtream wählen");
+        return;
       }
 
-      console.log("✅ Backend Antwort:", res);
-      setStatusLine("✅ Verbindung erfolgreich!");
-      setMessage(res.message || "Verbindung erfolgreich");
+      if (!baseUrl || !username || !password) {
+        setMessage("❌ Bitte alle Felder ausfüllen");
+        return;
+      }
 
-      await AsyncStorage.setItem(
-        "iptv_session",
-        JSON.stringify({
-          type: mode,
-          timestamp: Date.now(),
-          data: res,
-        })
-      );
+      // 🧠 Login gegen Xtream-API
+      const session = await loginXtream(baseUrl, username, password);
+      setStatusLine("✅ Login erfolgreich – Lade Kanäle...");
 
+      // 📺 Live-Sender abrufen
+      const channels = await getLiveStreams(session);
+      console.log(`📡 ${channels.length} Kanäle empfangen`);
+
+      // 💾 Session speichern
+      await AsyncStorage.setItem("iptv_session", JSON.stringify(session));
+
+      setMessage("✅ Verbindung erfolgreich!");
+      setStatusLine("✅ Bereit – starte Wiedergabe...");
+
+      // 🎬 Zum PlayerScreen navigieren
       setTimeout(() => {
-        navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
+        navigation.reset({
+          index: 0,
+          routes: [
+            {
+              name: "Player",
+              params: {
+                channels,
+                currentIndex: 0,
+                session,
+              },
+            },
+          ],
+        });
       }, 1000);
     } catch (err: any) {
       console.error("❌ Fehler:", err);

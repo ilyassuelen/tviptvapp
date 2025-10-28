@@ -16,10 +16,31 @@ import { Video, Audio } from "expo-av";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
-import AsyncStorage from "@react-native-async-storage/async-storage"; // ⬅️ NEU
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { buildStreamUrl } from "../api/xtreamApi";  // ✅ Neu
 
 export default function PlayerScreen({ route, navigation }: any) {
-  const { channels, currentIndex } = route.params;
+  const { channels, currentIndex, session: sessionFromRoute } = route.params;
+  const [session, setSession] = useState<any>(sessionFromRoute || null);
+
+  // 🔁 Falls keine Session übergeben wurde → aus AsyncStorage laden
+  useEffect(() => {
+    (async () => {
+      if (!sessionFromRoute) {
+        try {
+          const saved = await AsyncStorage.getItem("iptv_session");
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            console.log("🔄 Session aus AsyncStorage geladen:", parsed);
+            setSession(parsed);
+          }
+        } catch (err) {
+          console.log("⚠️ Konnte gespeicherte Session nicht laden:", err);
+        }
+      }
+    })();
+  }, []);
+
   const [selectedIndex, setSelectedIndex] = useState(currentIndex);
   const [isPlaying, setIsPlaying] = useState(true);
   const [showControls, setShowControls] = useState(false);
@@ -61,44 +82,66 @@ export default function PlayerScreen({ route, navigation }: any) {
     })();
   }, [selectedIndex]);
 
+  // 🔁 Wenn Session nachträglich geladen wird → Stream erneut starten
+  useEffect(() => {
+    if (session && !currentUrl && !loading) {
+      console.log("🔁 Session jetzt verfügbar – starte Stream erneut");
+      startStream();
+    }
+  }, [session]);
+
   const startStream = async () => {
     try {
       setLoading(true);
       const ch = currentChannel;
-      let streamUrl = ch.stream_url;
-      if (ch.stream_id && !streamUrl?.includes("/live/")) {
-        const resp = await fetch("http://87.106.10.34:8000/sessions.json");
-        const data = await resp.json();
-        streamUrl = `${data.base_url}/live/${data.username}/${data.password}/${ch.stream_id}.m3u8`;
+      if (!session) {
+        console.log("⚠️ Session noch nicht geladen – Streamstart abgebrochen");
+        setErrorMsg("Sitzung noch nicht geladen. Bitte kurz warten oder neu versuchen.");
+        setLoading(false);
+        return;
       }
-      if (streamUrl.startsWith("https://"))
-        streamUrl = streamUrl.replace("https://", "http://");
+
+      // ✅ Stream-URL über Xtream API bauen
+      let streamUrl = await buildStreamUrl(session, ch.stream_id, ch.stream_type);
+      // 🧩 Falls Film oder Serie → Dateiendung auf .mp4 setzen
+      if (ch.stream_type?.toLowerCase().includes("movie") || ch.stream_type?.toLowerCase().includes("series")) {
+        if (streamUrl.endsWith(".m3u8")) {
+          streamUrl = streamUrl.replace(".m3u8", ".mp4");
+        }
+      }
+      console.log("🎬 Finaler Stream-URL:", streamUrl);
+
       setCurrentUrl(streamUrl);
 
       if (videoRef.current) {
         await videoRef.current.unloadAsync().catch(() => {});
         await videoRef.current.loadAsync(
-          { uri: streamUrl },
+          {
+            uri: streamUrl,
+            headers: {
+              "User-Agent": "ExoPlayerLib/2.15.1 (Linux;Android 11)",
+              "Referer": streamUrl.split("/live/")[0] + "/",
+              "Origin": streamUrl.split("/live/")[0],
+              "Accept": "*/*",
+              "Connection": "keep-alive",
+            },
+          },
           { shouldPlay: true, isMuted: false }
         );
       }
+
       setIsPlaying(true);
 
-      // ⬇️⬇️ Verlaufs-Eintrag speichern (ganzer Channel + Timestamp)
-      try {
-        const historyRaw = await AsyncStorage.getItem("stream_history");
-        const history = historyRaw ? JSON.parse(historyRaw) : [];
-        const newEntry = {
-          ...ch,
-          stream_url: streamUrl || ch.stream_url || null,
-          timestamp: Date.now(),
-        };
-        const updated = [newEntry, ...history.filter((h: any) => h.name !== ch.name)].slice(0, 10);
-        await AsyncStorage.setItem("stream_history", JSON.stringify(updated));
-      } catch (e) {
-        console.warn("⚠️ Verlauf konnte nicht gespeichert werden:", e);
-      }
-      // ⬆️⬆️ Ende Verlauf
+      // 🧠 Verlauf speichern
+      const historyRaw = await AsyncStorage.getItem("stream_history");
+      const history = historyRaw ? JSON.parse(historyRaw) : [];
+      const newEntry = {
+        ...ch,
+        stream_url: streamUrl,
+        timestamp: Date.now(),
+      };
+      const updated = [newEntry, ...history.filter((h: any) => h.name !== ch.name)].slice(0, 10);
+      await AsyncStorage.setItem("stream_history", JSON.stringify(updated));
 
     } catch (err) {
       console.log("❌ Fehler beim Streamstart:", err);
@@ -242,14 +285,24 @@ export default function PlayerScreen({ route, navigation }: any) {
           >
             <Video
               ref={videoRef}
-              source={{ uri: currentUrl }}
+              source={{
+                uri: currentUrl,
+                overrideFileExtensionAndroid: "m3u8",
+                headers: {
+                  "User-Agent": "ExoPlayerLib/2.15.1 (Linux;Android 11)",
+                  "Referer": currentUrl.split("/live/")[0] + "/",
+                  "Origin": currentUrl.split("/live/")[0],
+                },
+              }}
               style={StyleSheet.absoluteFill}
               shouldPlay={isPlaying}
               resizeMode="contain"
+              useNativeControls={false}
+              onError={(error) => console.log("❌ Video-Fehler:", error)}
             />
           </TouchableOpacity>
 
-          {/* Overlay-Steuerung nur im Vollbild */}
+          {/* Overlay-Steuerung */}
           {isFullscreen && showControls && (
             <View style={styles.overlay}>
               <TouchableOpacity
@@ -280,19 +333,12 @@ export default function PlayerScreen({ route, navigation }: any) {
           )}
         </Animated.View>
       )}
-
-      {loading && (
-        <View style={[styles.center, StyleSheet.absoluteFill]}>
-          <ActivityIndicator color="#ff5722" size="large" />
-        </View>
-      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000" },
-
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -303,14 +349,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   backHeaderBtn: { flexDirection: "row", alignItems: "center" },
-
-  splitContainer: {
-    flex: 1,
-    flexDirection: "row",
-    backgroundColor: "#000",
-  },
-
-  // ✨ modernisierter linker Bereich
+  splitContainer: { flex: 1, flexDirection: "row", backgroundColor: "#000" },
   leftPane: {
     width: "35%",
     backgroundColor: "#0b0b0b",
@@ -319,8 +358,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 4,
   },
-
-  // 👉 moderner Channel-Card-Look
   channelItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -330,58 +367,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 10,
     backgroundColor: "rgba(255,255,255,0.03)",
-    overflow: "hidden",
   },
-
-  // 🎨 Aktivierter Sender bekommt Glow / Akzentleiste links
   channelItemSelected: {
     backgroundColor: "rgba(255, 87, 34, 0.15)",
     borderLeftColor: "#ff5722",
     borderLeftWidth: 3,
-    shadowColor: "#ff5722",
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
   },
-
-  channelLogo: {
-    width: 46,
-    height: 46,
-    borderRadius: 6,
-    marginRight: 10,
-  },
-
-  channelName: {
-    color: "#ddd",
-    fontSize: 15,
-    fontWeight: "500",
-    flexShrink: 1,
-  },
-
-  // ✨ rechte Seite
-  rightPane: {
-    width: "65%",
-    backgroundColor: "#000",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.35)",
-  },
-  backOverlayButton: {
-    position: "absolute",
-    top: 22,
-    left: 18,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  channelLogo: { width: 46, height: 46, borderRadius: 6, marginRight: 10 },
+  channelName: { color: "#ddd", fontSize: 15, fontWeight: "500", flexShrink: 1 },
+  rightPane: { width: "65%", backgroundColor: "#000", justifyContent: "center", alignItems: "center" },
+  overlay: { ...StyleSheet.absoluteFillObject, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.35)" },
+  backOverlayButton: { position: "absolute", top: 22, left: 18, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.2)", justifyContent: "center", alignItems: "center" },
   controlsRow: { flexDirection: "row", alignItems: "center", gap: 44 },
   center: { justifyContent: "center", alignItems: "center" },
 });
