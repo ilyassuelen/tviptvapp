@@ -15,6 +15,23 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: "com.ilyassulen.iptvapp",
+    infoPlist: {
+      NSAppTransportSecurity: {
+        NSAllowsArbitraryLoads: true,
+        NSAllowsLocalNetworking: true,
+        NSExceptionDomains: {
+          "m3u.best-smarter.me": {
+            NSIncludesSubdomains: true,
+            NSTemporaryExceptionAllowsInsecureHTTPLoads: true,
+            NSTemporaryExceptionMinimumTLSVersion: "TLSv1.0",
+          },
+          "192.168.2.101": {
+            NSIncludesSubdomains: true,
+            NSTemporaryExceptionAllowsInsecureHTTPLoads: true,
+          },
+        },
+      },
+    },
   },
   android: {
     package: "com.ilyassulen.iptvapp",
@@ -23,7 +40,6 @@ const config: ExpoConfig = {
       backgroundColor: "#000000",
     },
   },
-  scheme: "iptvapp",
   web: {
     favicon: "./assets/logo.png",
   },

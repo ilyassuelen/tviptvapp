@@ -1,68 +1,40 @@
-import * as FileSystem from "expo-file-system";
-import * as Network from "expo-network";
 import axios from "axios";
 
-// 🔧 Wichtig: Safe Import für CommonJS-Modul
-let StaticServer: any;
-try {
-  StaticServer = require("react-native-static-server").default || require("react-native-static-server");
-} catch (e) {
-  console.error("⚠️ Modul 'react-native-static-server' konnte nicht geladen werden:", e);
-}
+/**
+ * IPTV Proxy-Konfiguration
+ * Nutzt den lokalen Flask-Server (läuft z. B. auf http://192.168.2.101:8085)
+ * um alle Streams umzuleiten → vermeidet CORS- & iOS-Probleme.
+ */
+const PROXY_BASE_URL = "http://192.168.2.101:8085/proxy";
 
-let proxy: any = null;
-const proxyPort = 8089;
-let localIP: string | null = null;
+/**
+ * Baut die finale Proxy-URL auf, über die der Stream geladen wird.
+ * Beispiel:
+ *   Original: http://m3u.best-smarter.me/live/.../1537280.m3u8
+ *   Ergebnis: http://192.168.2.101:8085/proxy?url=http%3A%2F%2Fm3u.best-smarter.me%2Flive%2F...%2F1537280.m3u8
+ */
+export async function getProxiedUrl(originalUrl: string): Promise<string> {
+  if (!originalUrl) return "";
 
-// 🚀 Lokalen Proxy starten
-export async function startProxyServer(): Promise<string> {
   try {
-    if (!StaticServer) {
-      throw new Error("StaticServer-Modul ist null oder undefiniert");
-    }
-
-    // 🔍 Lokale IP ermitteln (z. B. 192.168.x.x)
-    if (!localIP) {
-      const ip = await Network.getIpAddressAsync();
-      localIP = ip && ip.startsWith("192.168") ? ip : "localhost";
-    }
-
-    // Falls Proxy schon läuft → Basis-URL zurückgeben
-    if (proxy) {
-      return `http://${localIP}:${proxyPort}`;
-    }
-
-    // 📂 Root-Verzeichnis für temporäre Dateien
-    const root = FileSystem.cacheDirectory || FileSystem.documentDirectory!;
-    proxy = new StaticServer(proxyPort, root, { localOnly: true });
-
-    const startedUrl = await proxy.start();
-    console.log(`🧩 Lokaler Proxy gestartet: ${startedUrl}`);
-
-    // iOS-Kompatibilität: "localhost" durch reale IP ersetzen
-    const finalUrl = startedUrl.replace("localhost", localIP);
-    console.log(`🌐 Proxy erreichbar unter: ${finalUrl}`);
-    return finalUrl;
+    const encoded = encodeURIComponent(originalUrl);
+    const proxiedUrl = `${PROXY_BASE_URL}?url=${encoded}`;
+    console.log("🧩 Verwende Flask-Proxy-URL:", proxiedUrl);
+    return proxiedUrl;
   } catch (err) {
-    console.error("❌ Proxy konnte nicht gestartet werden:", err);
-    return "";
+    console.warn("⚠️ Proxy-URL konnte nicht erstellt werden:", err);
+    return originalUrl;
   }
 }
 
-// 🔁 Proxied URL erzeugen
-export async function getProxiedUrl(originalUrl: string): Promise<string> {
+/**
+ * Optional: Testet, ob der Proxy-Server erreichbar ist.
+ */
+export async function checkProxyHealth(): Promise<boolean> {
   try {
-    const baseUrl = await startProxyServer();
-    if (!baseUrl) {
-      console.warn("⚠️ Proxy-BaseURL ungültig, verwende Original-URL");
-      return originalUrl;
-    }
-
-    const final = `${baseUrl}?url=${encodeURIComponent(originalUrl)}`;
-    console.log(`🧩 Proxy-Weiterleitung erzeugt: ${final}`);
-    return final;
-  } catch (err) {
-    console.warn("⚠️ Proxy-Aufruf fehlgeschlagen, nutze Original-URL:", err);
-    return originalUrl;
+    const res = await axios.get("http://192.168.2.101:8085/health", { timeout: 3000 });
+    return res.data?.status === "ok";
+  } catch {
+    return false;
   }
 }

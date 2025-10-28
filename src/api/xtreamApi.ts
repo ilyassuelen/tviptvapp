@@ -1,15 +1,9 @@
 import axios from "axios";
-import { Platform } from "react-native";
 import { getProxiedUrl } from "./proxyServer";
 import * as Network from "expo-network";
 
 // 🔧 Automatische lokale IP-Erkennung für iOS-Simulator & Entwicklung
-let LOCAL_IP = "localhost";
-Network.getIpAddressAsync().then((ip) => {
-  if (ip && ip.startsWith("192.168")) {
-    LOCAL_IP = ip;
-  }
-});
+let LOCAL_IP = "192.168.2.101";
 
 // Helper-Funktion: ersetzt localhost → lokale IP
 function normalizeUrl(url: string): string {
@@ -88,19 +82,15 @@ export async function buildStreamUrl(
           console.log(`🎬 Erzwungene .m3u8-Variante: ${finalUrl}`);
         }
 
-        // 📱 iOS → Stream über lokalen Proxy leiten
-        if (Platform.OS === "ios") {
-          const proxied = await getProxiedUrl(finalUrl);
-          if (proxied && proxied.startsWith("http")) {
-            console.log(`🔁 iOS-Proxy aktiv: ${proxied}`);
-            return proxied;
-          } else {
-            console.warn("⚠️ Proxy ungültig, verwende Original-URL:", finalUrl);
-            return finalUrl;
-          }
+        // 🔁 Immer über Proxy leiten (egal ob iOS/Android)
+        const proxied = await getProxiedUrl(finalUrl);
+        if (proxied && proxied.startsWith("http")) {
+          console.log(`🎯 Stream wird über Proxy geladen: ${proxied}`);
+          return proxied;
+        } else {
+          console.warn("⚠️ Proxy ungültig, verwende Original-URL:", finalUrl);
+          return finalUrl;
         }
-
-        return finalUrl;
       }
     } catch (err) {
       console.warn(`❌ Fehler beim Prüfen der URL ${url}:`, err);
@@ -112,16 +102,12 @@ export async function buildStreamUrl(
   console.warn("⚠️ Kein Stream erreichbar, nutze Standard .m3u8");
   const fallback = `${base}.m3u8`;
 
-  if (Platform.OS === "ios") {
-    const proxied = await getProxiedUrl(fallback);
-    if (proxied && proxied.startsWith("http")) {
-      console.log(`🔁 iOS-Proxy aktiv (Fallback): ${proxied}`);
-      return proxied;
-    } else {
-      console.warn("⚠️ Proxy-Fallback ungültig, verwende Original-URL:", fallback);
-      return fallback;
-    }
+  const proxied = await getProxiedUrl(fallback);
+  if (proxied && proxied.startsWith("http")) {
+    console.log(`🔁 Proxy aktiv (Fallback): ${proxied}`);
+    return proxied;
+  } else {
+    console.warn("⚠️ Proxy-Fallback ungültig, verwende Original-URL:", fallback);
+    return fallback;
   }
-
-  return fallback;
 }
