@@ -1,5 +1,6 @@
 import axios from "axios";
 import { getProxiedUrl } from "./proxyServer";
+import { getXtreamInfo } from "../store"; // ✅ NEU – Fallback auf global gespeicherte Xtream-Verbindung
 
 // 🌍 HTTPS-Proxy via ngrok – iOS sichert nur HTTPS!
 const PROXY_BASE = "https://bromic-natalie-subhemispherically.ngrok-free.dev";
@@ -48,9 +49,10 @@ function ensureValidInfo(info: XtreamInfo) {
 }
 
 // 📺 Live-Streams
-export async function getLiveStreams(info: XtreamInfo) {
-  ensureValidInfo(info);
-  const { serverUrl, username, password } = info;
+export async function getLiveStreams(info?: XtreamInfo) {
+  const xtream = info || getXtreamInfo(); // ✅ Fallback auf gespeicherte Session
+  ensureValidInfo(xtream);
+  const { serverUrl, username, password } = xtream;
   const url = `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_live_streams`;
   const apiUrl = proxiedApiUrl(url);
   const res = await axios.get(apiUrl);
@@ -58,9 +60,10 @@ export async function getLiveStreams(info: XtreamInfo) {
 }
 
 // 🎬 Filme
-export async function getMovieStreams(info: XtreamInfo) {
-  ensureValidInfo(info);
-  const { serverUrl, username, password } = info;
+export async function getMovieStreams(info?: XtreamInfo) {
+  const xtream = info || getXtreamInfo(); // ✅ Fallback auf gespeicherte Session
+  ensureValidInfo(xtream);
+  const { serverUrl, username, password } = xtream;
   const url = `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_vod_streams`;
   const apiUrl = proxiedApiUrl(url);
   const res = await axios.get(apiUrl);
@@ -68,9 +71,10 @@ export async function getMovieStreams(info: XtreamInfo) {
 }
 
 // 🎞️ Serien
-export async function getSeriesStreams(info: XtreamInfo) {
-  ensureValidInfo(info);
-  const { serverUrl, username, password } = info;
+export async function getSeriesStreams(info?: XtreamInfo) {
+  const xtream = info || getXtreamInfo(); // ✅ Fallback auf gespeicherte Session
+  ensureValidInfo(xtream);
+  const { serverUrl, username, password } = xtream;
   const url = `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_series`;
   const apiUrl = proxiedApiUrl(url);
   const res = await axios.get(apiUrl);

@@ -71,6 +71,23 @@ export default function PlayerScreen({ route, navigation }: any) {
     }, [])
   );
 
+  // 📺 Beim Öffnen sofort Landscape aktivieren
+  useEffect(() => {
+    const lockLandscape = async () => {
+      try {
+        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+      } catch (err) {
+        console.warn("⚠️ Konnte Bildschirmorientierung nicht sperren:", err);
+      }
+    };
+    lockLandscape();
+
+    return () => {
+      // Beim Verlassen wieder auf Portrait umstellen
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+    };
+  }, []);
+
   useEffect(() => {
     (async () => {
       await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_RIGHT);

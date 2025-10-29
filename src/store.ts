@@ -36,7 +36,11 @@ export function setXtreamConnection(username: string, password: string, serverUr
 export function getXtreamInfo() {
   if (!appState.xtream) {
     console.warn("⚠️ Keine Xtream-Verbindung aktiv!");
-    return null;
+    return {
+      username: "",
+      password: "",
+      serverUrl: "",
+    };
   }
   return appState.xtream;
 }

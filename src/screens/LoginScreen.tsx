@@ -65,7 +65,7 @@ export default function LoginScreen() {
       // Verbindung im globalen Zustand speichern
       setXtreamConnection(username, password, baseUrl);
 
-      const session = { baseUrl, username, password };
+      const session = { serverUrl: baseUrl, username, password };
       setStatusLine("✅ Login erfolgreich – Lade Kanäle...");
 
       // 📺 Live-Sender abrufen

@@ -4,7 +4,7 @@ const config: ExpoConfig = {
   name: "IPTV App",
   slug: "iptv-app",
   version: "1.0.0",
-  orientation: "portrait",
+  orientation: "default",
   icon: "./assets/logo.png",
   userInterfaceStyle: "dark",
   splash: {

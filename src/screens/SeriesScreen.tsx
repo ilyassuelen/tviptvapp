@@ -40,7 +40,7 @@ export default function SeriesScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-80)).current;
 
-  const BACKEND_URL = "http://87.106.10.34:8000/iptv/series";
+  const BACKEND_URL = "https://bromic-natalie-subhemispherically.ngrok-free.dev/iptv/series";
 
   // ===============================
   // 📦 Daten laden

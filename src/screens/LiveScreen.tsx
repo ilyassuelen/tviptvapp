@@ -20,7 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import * as Font from "expo-font";
 
-const API_BASE = "http://87.106.10.34:8000";
+const API_BASE = "https://bromic-natalie-subhemispherically.ngrok-free.dev";
 
 export default function LiveScreen() {
   const navigation = useNavigation<any>();
