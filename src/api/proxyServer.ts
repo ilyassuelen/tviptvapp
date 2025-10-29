@@ -5,7 +5,7 @@ import axios from "axios";
  * Nutzt den lokalen Flask-Server (läuft z. B. auf http://192.168.2.101:8085)
  * um alle Streams umzuleiten → vermeidet CORS- & iOS-Probleme.
  */
-const PROXY_BASE_URL = "http://192.168.2.101:8085/proxy";
+const PROXY_BASE_URL = "https://bromic-natalie-subhemispherically.ngrok-free.dev/proxy";
 
 /**
  * Baut die finale Proxy-URL auf, über die der Stream geladen wird.
@@ -32,7 +32,7 @@ export async function getProxiedUrl(originalUrl: string): Promise<string> {
  */
 export async function checkProxyHealth(): Promise<boolean> {
   try {
-    const res = await axios.get("http://192.168.2.101:8085/health", { timeout: 3000 });
+    const res = await axios.get("https://bromic-natalie-subhemispherically.ngrok-free.dev/health", { timeout: 3000 });
     return res.data?.status === "ok";
   } catch {
     return false;

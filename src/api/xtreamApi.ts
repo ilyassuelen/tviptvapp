@@ -1,17 +1,13 @@
 import axios from "axios";
 import { getProxiedUrl } from "./proxyServer";
-import * as Network from "expo-network";
 
-// 🔧 Automatische lokale IP-Erkennung für iOS-Simulator & Entwicklung
-let LOCAL_IP = "192.168.2.101";
+// 🌍 HTTPS-Proxy via ngrok – iOS sichert nur HTTPS!
+const PROXY_BASE = "https://bromic-natalie-subhemispherically.ngrok-free.dev";
 
-// Helper-Funktion: ersetzt localhost → lokale IP
-function normalizeUrl(url: string): string {
-  if (!url) return "";
-  if (url.includes("localhost") || url.includes("127.0.0.1")) {
-    return url.replace("localhost", LOCAL_IP).replace("127.0.0.1", LOCAL_IP);
-  }
-  return url;
+// 🧩 Helper: Baut URL für Proxy-Route zusammen
+function proxiedApiUrl(target: string): string {
+  const encoded = encodeURIComponent(target);
+  return `${PROXY_BASE}/proxy?url=${encoded}`;
 }
 
 export interface XtreamInfo {
@@ -20,38 +16,48 @@ export interface XtreamInfo {
   serverUrl: string;
 }
 
-// 🔑 Login-Funktion (liefert Serverdaten)
+// 🔑 Login
 export async function loginXtream(baseUrl: string, username: string, password: string) {
-  const cleanBase = normalizeUrl(baseUrl.replace(/\/player_api\.php.*$/, "").replace(/\/+$/, ""));
+  const cleanBase = baseUrl.replace(/\/player_api\.php.*$/, "").replace(/\/+$/, "");
   const url = `${cleanBase}/player_api.php?username=${username}&password=${password}`;
-  const res = await axios.get(url);
+  const apiUrl = proxiedApiUrl(url);
+
+  const res = await axios.get(apiUrl);
 
   if (res.data?.user_info?.auth !== 1) throw new Error("Login fehlgeschlagen");
-
-  const fullServerUrl = cleanBase.startsWith("http") ? cleanBase : `http://${res.data.server_info.url}`;
 
   return {
     username,
     password,
-    serverUrl: fullServerUrl.replace(/^https?:\/\//, ""),
+    serverUrl: cleanBase,
   };
 }
 
-// 📺 Live-Streams abrufen
+// 📺 Live-Streams
 export async function getLiveStreams({ serverUrl, username, password }: XtreamInfo) {
-  const url = `http://${normalizeUrl(serverUrl)}/player_api.php?username=${username}&password=${password}&action=get_live_streams`;
-  const res = await axios.get(url);
+  const url = `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_live_streams`;
+  const apiUrl = proxiedApiUrl(url);
+  const res = await axios.get(apiUrl);
   return res.data;
 }
 
-// 🎬 Film-Streams abrufen
+// 🎬 Filme
 export async function getMovieStreams({ serverUrl, username, password }: XtreamInfo) {
-  const url = `http://${normalizeUrl(serverUrl)}/player_api.php?username=${username}&password=${password}&action=get_vod_streams`;
-  const res = await axios.get(url);
+  const url = `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_vod_streams`;
+  const apiUrl = proxiedApiUrl(url);
+  const res = await axios.get(apiUrl);
   return res.data;
 }
 
-// 🎥 Hauptfunktion: gültige Stream-URL bauen
+// 🎞️ Serien
+export async function getSeriesStreams({ serverUrl, username, password }: XtreamInfo) {
+  const url = `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_series`;
+  const apiUrl = proxiedApiUrl(url);
+  const res = await axios.get(apiUrl);
+  return res.data;
+}
+
+// 🎥 Stream-URL über Proxy holen
 export async function buildStreamUrl(
   { serverUrl, username, password }: XtreamInfo,
   streamId: number,
@@ -61,53 +67,14 @@ export async function buildStreamUrl(
   if (streamType?.toLowerCase().includes("movie")) typePath = "movie";
   else if (streamType?.toLowerCase().includes("series")) typePath = "series";
 
-  const base = `http://${normalizeUrl(serverUrl)}/${typePath}/${username}/${password}/${streamId}`;
+  const targetUrl = `${serverUrl}/${typePath}/${username}/${password}/${streamId}.m3u8`;
+  const proxied = await getProxiedUrl(targetUrl);
 
-  // 🔁 Priorität: .m3u8 > .ts > .mp4
-  const testUrls =
-    streamType?.toLowerCase().includes("movie") || streamType?.toLowerCase().includes("series")
-      ? [`${base}.m3u8`]
-      : [`${base}.m3u8`, `${base}.ts`, `${base}.mp4`];
-
-  for (const url of testUrls) {
-    try {
-      const res = await fetch(url, { method: "HEAD" });
-      if (res.ok) {
-        console.log(`✅ funktionierender Stream gefunden: ${url}`);
-
-        // 🎬 Bevorzuge immer .m3u8 (beste Kompatibilität)
-        let finalUrl = url;
-        if (url.endsWith(".mp4") || url.endsWith(".ts")) {
-          finalUrl = url.replace(/\.mp4$|\.ts$/, ".m3u8");
-          console.log(`🎬 Erzwungene .m3u8-Variante: ${finalUrl}`);
-        }
-
-        // 🔁 Immer über Proxy leiten (egal ob iOS/Android)
-        const proxied = await getProxiedUrl(finalUrl);
-        if (proxied && proxied.startsWith("http")) {
-          console.log(`🎯 Stream wird über Proxy geladen: ${proxied}`);
-          return proxied;
-        } else {
-          console.warn("⚠️ Proxy ungültig, verwende Original-URL:", finalUrl);
-          return finalUrl;
-        }
-      }
-    } catch (err) {
-      console.warn(`❌ Fehler beim Prüfen der URL ${url}:`, err);
-      continue;
-    }
-  }
-
-  // 🚨 Kein Stream funktioniert → Fallback
-  console.warn("⚠️ Kein Stream erreichbar, nutze Standard .m3u8");
-  const fallback = `${base}.m3u8`;
-
-  const proxied = await getProxiedUrl(fallback);
   if (proxied && proxied.startsWith("http")) {
-    console.log(`🔁 Proxy aktiv (Fallback): ${proxied}`);
+    console.log(`🎯 Stream wird über Proxy geladen: ${proxied}`);
     return proxied;
   } else {
-    console.warn("⚠️ Proxy-Fallback ungültig, verwende Original-URL:", fallback);
-    return fallback;
+    console.warn("⚠️ Proxy ungültig, verwende Original-URL:", targetUrl);
+    return targetUrl;
   }
 }
