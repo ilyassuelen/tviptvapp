@@ -11,6 +11,9 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
 import { loginXtream, getLiveStreams } from "../api/xtreamApi"; // ✅ neue Xtream-API
+import { setXtreamConnection } from "../store";
+import axios from "axios";
+import { buildApiUrl } from "../api/config";
 
 export default function LoginScreen() {
   const navigation = useNavigation<any>();
@@ -53,7 +56,16 @@ export default function LoginScreen() {
       }
 
       // 🧠 Login gegen Xtream-API
-      const session = await loginXtream(baseUrl, username, password);
+      const res = await axios.post(buildApiUrl("/auth/connect-xtream"), {
+          base_url: baseUrl,
+          username,
+          password,
+      });
+      if (res.data?.status !== "success") throw new Error("Backend-Login fehlgeschlagen");
+      // Verbindung im globalen Zustand speichern
+      setXtreamConnection(username, password, baseUrl);
+
+      const session = { baseUrl, username, password };
       setStatusLine("✅ Login erfolgreich – Lade Kanäle...");
 
       // 📺 Live-Sender abrufen

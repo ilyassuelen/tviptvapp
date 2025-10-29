@@ -2,9 +2,11 @@ from flask import Flask, request, Response, jsonify, stream_with_context
 import requests
 from urllib.parse import urljoin, quote, urlparse
 import urllib3, re
+from flask_cors import CORS
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 app = Flask(__name__)
+CORS(app)
 
 @app.route("/health")
 def health():
@@ -141,4 +143,4 @@ def proxy():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8085)
+    app.run(host="127.0.0.1", port=8085)

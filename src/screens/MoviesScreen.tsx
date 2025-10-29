@@ -15,6 +15,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import * as Font from "expo-font";
+import { buildApiUrl } from "../api/config";
 
 function cleanTitle(rawTitle: string): string {
   if (!rawTitle) return "Unbekannt";
@@ -39,7 +40,7 @@ export default function MoviesScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-80)).current;
 
-  const BACKEND_URL = "http://87.106.10.34:8000/iptv/movies";
+  const BACKEND_URL = buildApiUrl("/iptv/movies");
 
   // ===============================
   // 📦 Daten laden

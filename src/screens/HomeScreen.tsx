@@ -15,6 +15,7 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import * as Font from "expo-font";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BlurView } from "expo-blur";
+import { buildApiUrl } from "../api/config";
 
 export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
@@ -30,8 +31,8 @@ export default function HomeScreen() {
   const spinAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  const MOVIES_URL = "http://87.106.10.34:8000/iptv/movies";
-  const SERIES_URL = "http://87.106.10.34:8000/iptv/series";
+  const MOVIES_URL = buildApiUrl("/iptv/movies");
+  const SERIES_URL = buildApiUrl("/iptv/series");
 
   const languageLabels: Record<string, string> = {
     DE: "Deutsch",

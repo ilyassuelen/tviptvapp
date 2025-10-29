@@ -7,8 +7,9 @@ import os
 import re
 import json
 from urllib.parse import urlparse, unquote
+from fastapi.responses import StreamingResponse
 
-PROXY_BASE = "https://bromic-natalie-subhemispherically.ngrok-free.dev/proxy?url="
+PROXY_BASE = "http://127.0.0.1:8080/proxy?url="
 
 # ====================================================
 # 🚀 IPTV Backend – Haupt-App
@@ -78,7 +79,7 @@ async def connect_xtream_route(request: Request):
 
         # Verbindung prüfen
         try:
-            response = session.get(f"{PROXY_BASE}{api_url}", timeout=10)
+            response = session.get(api_url, timeout=10)
             response.raise_for_status()
         except requests.exceptions.ConnectionError:
             print("⚠️ HTTP fehlgeschlagen – HTTPS wird NICHT versucht (Server unterstützt kein HTTPS)")
@@ -98,14 +99,14 @@ async def connect_xtream_route(request: Request):
         print("📥 Lade Kategorien, Kanäle, Filme & Serien ...")
 
         # Live-Daten
-        cat_response = session.get(f"{PROXY_BASE}{server_url}", params={**params, "action": "get_live_categories"}, timeout=20)
-        ch_response = session.get(f"{PROXY_BASE}{server_url}", params={**params, "action": "get_live_streams"}, timeout=30)
+        cat_response = session.get(server_url, params={**params, "action": "get_live_categories"}, timeout=20)
+        ch_response = session.get(server_url, params={**params, "action": "get_live_streams"}, timeout=30)
 
         # Film- und Serien-Daten
-        vod_cat_response = session.get(f"{PROXY_BASE}{server_url}", params={**params, "action": "get_vod_categories"}, timeout=20)
-        vod_response = session.get(f"{PROXY_BASE}{server_url}", params={**params, "action": "get_vod_streams"}, timeout=30)
-        series_cat_response = session.get(f"{PROXY_BASE}{server_url}", params={**params, "action": "get_series_categories"}, timeout=20)
-        series_response = session.get(f"{PROXY_BASE}{server_url}", params={**params, "action": "get_series"}, timeout=30)
+        vod_cat_response = session.get(server_url, params={**params, "action": "get_vod_categories"}, timeout=20)
+        vod_response = session.get(server_url, params={**params, "action": "get_vod_streams"}, timeout=30)
+        series_cat_response = session.get(server_url, params={**params, "action": "get_series_categories"}, timeout=20)
+        series_response = session.get(server_url, params={**params, "action": "get_series"}, timeout=30)
 
         # Ergebnisse
         categories = cat_response.json() if cat_response.status_code == 200 else []
@@ -337,3 +338,31 @@ def get_sessions():
             return JSONResponse(json.load(f))
     except Exception as e:
         return JSONResponse({"detail": f"Fehler beim Lesen der Datei: {str(e)}"}, status_code=500)
+
+# ====================================================
+# 📡 Proxy-Route zum Streamen externer URLs (z.B. M3U8/TS)
+# ====================================================
+@app.get("/proxy")
+def proxy(url: str, request: Request):
+    try:
+        headers = {}
+        # Weiterleiten von wichtigen Headers
+        for header_name in ["range", "user-agent", "referer", "origin"]:
+            header_value = request.headers.get(header_name)
+            if header_value:
+                headers[header_name] = header_value
+
+        resp = requests.get(url, headers=headers, stream=True, timeout=30)
+        resp.raise_for_status()
+
+        def iter_stream():
+            try:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    if chunk:
+                        yield chunk
+            finally:
+                resp.close()
+
+        return StreamingResponse(iter_stream(), status_code=resp.status_code, headers=dict(resp.headers))
+    except Exception as e:
+        return JSONResponse({"detail": f"Proxy-Fehler: {str(e)}"}, status_code=500)
