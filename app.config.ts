@@ -15,9 +15,20 @@ const config: ExpoConfig = {
 
   ios: {
     supportsTablet: true,
+
+    // ➕ Erlaubt beide Orientierungen vollständig
+    orientations: ["portrait", "landscape-right", "landscape-left"],
+
     bundleIdentifier: "com.ilyassulen.iptvapp",
-    // 🔐 erlaubt HTTP (unsichere) Verbindungen zu deinem Server
+
     infoPlist: {
+      UISupportedInterfaceOrientations: [
+        "UIInterfaceOrientationPortrait",
+        "UIInterfaceOrientationLandscapeLeft",
+        "UIInterfaceOrientationLandscapeRight",
+      ],
+
+      // 🔓 erlaubt unsichere HTTP-Verbindungen
       NSAppTransportSecurity: {
         NSAllowsArbitraryLoads: true,
         NSAllowsLocalNetworking: true,

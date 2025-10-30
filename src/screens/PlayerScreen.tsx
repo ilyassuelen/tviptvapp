@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
-  ViewStyle,
+  useWindowDimensions,
 } from "react-native";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { Ionicons } from "@expo/vector-icons";
@@ -31,9 +31,19 @@ export default function PlayerScreen({ route, navigation }: any) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   //const videoRef = useRef<VideoView>(null);
   const progress = useRef(new Animated.Value(0)).current;
-  const { width: SW, height: SH } = Dimensions.get("window");
+  const { width: SW, height: SH } = useWindowDimensions();
 
   const currentChannel = channels[selectedIndex];
+
+  // 🔒 Lock to landscape whenever this screen is focused; never unlock here to avoid flicker
+  useFocusEffect(
+    React.useCallback(() => {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_RIGHT).catch(() => {});
+      return () => {
+        // Intentionally no unlock on blur. We only restore in handleBack().
+      };
+    }, [])
+  );
 
   // 🔁 Falls keine Session übergeben wurde → aus AsyncStorage laden
   useEffect(() => {
@@ -54,26 +64,10 @@ export default function PlayerScreen({ route, navigation }: any) {
   }, []);
 
 
-  // 📺 Beim Öffnen sofort Landscape aktivieren
-  useEffect(() => {
-    const lockLandscape = async () => {
-      try {
-        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
-      } catch (err) {
-        console.warn("⚠️ Konnte Bildschirmorientierung nicht sperren:", err);
-      }
-    };
-    lockLandscape();
 
-    return () => {
-      // Beim Verlassen wieder auf Portrait umstellen
-      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
-    };
-  }, []);
 
   useEffect(() => {
     (async () => {
-      await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_RIGHT);
       await startStream();
     })();
   }, [selectedIndex]);
@@ -139,6 +133,7 @@ export default function PlayerScreen({ route, navigation }: any) {
   const handleBack = async () => {
     try {
       setIsPlaying(false);
+      // Restore portrait *once* when actually leaving this screen
       await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
       navigation.goBack();
     } catch (err) {
@@ -147,7 +142,6 @@ export default function PlayerScreen({ route, navigation }: any) {
   };
 
   const enterFullscreen = () => {
-    //setCurrentUrl(null); // ⬅️ alter Player vollständig entfernen
     setIsFullscreen(true);
     setShowControls(true);
     Animated.timing(progress, {
@@ -199,15 +193,6 @@ export default function PlayerScreen({ route, navigation }: any) {
     }
   };
 
-  const videoStyle = {
-    position: "absolute",
-    left: progress.interpolate({ inputRange: [0, 1], outputRange: [SW * 0.35, 0] }),
-    top: progress.interpolate({ inputRange: [0, 1], outputRange: [60, 0] }),
-    width: progress.interpolate({ inputRange: [0, 1], outputRange: [SW * 0.65, SW] }),
-    height: progress.interpolate({ inputRange: [0, 1], outputRange: [SH - 100, SH] }),
-    backgroundColor: "#000",
-    zIndex: 5,
-  } as ViewStyle;
 
   return (
     <View style={styles.container}>
@@ -267,13 +252,14 @@ export default function PlayerScreen({ route, navigation }: any) {
 
       {currentUrl && (
         !isFullscreen ? (
-          <Animated.View style={videoStyle}>
+          <View style={styles.playerContainer}>
             <TouchableOpacity
               activeOpacity={1}
               style={StyleSheet.absoluteFill}
               onPress={enterFullscreen}
             >
               <VLCPlayer
+                key={currentUrl}
                 style={StyleSheet.absoluteFill}
                 source={{ uri: currentUrl }}
                 autoPlay
@@ -289,7 +275,7 @@ export default function PlayerScreen({ route, navigation }: any) {
                 onStopped={() => console.log("⏹️ VLC gestoppt")}
               />
             </TouchableOpacity>
-          </Animated.View>
+          </View>
         ) : (
           <View style={[StyleSheet.absoluteFill, { backgroundColor: "#000", zIndex: 99 }]}>
             <TouchableOpacity
@@ -392,4 +378,12 @@ const styles = StyleSheet.create({
   backOverlayButton: { position: "absolute", top: 22, left: 18, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.2)", justifyContent: "center", alignItems: "center" },
   controlsRow: { flexDirection: "row", alignItems: "center", gap: 44 },
   center: { justifyContent: "center", alignItems: "center" },
+  playerContainer: {
+    position: 'absolute',
+    left: '35%',
+    top: 60,
+    width: '65%',
+    bottom: 0,
+    backgroundColor: '#000',
+  },
 });
