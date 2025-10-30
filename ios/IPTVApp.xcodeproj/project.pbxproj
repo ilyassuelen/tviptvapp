@@ -9,27 +9,27 @@
 /* Begin PBXBuildFile section */
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		4752BA5242F6DAA8A5BFB2EA /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 77B24118324D2D7ED0E9732E /* PrivacyInfo.xcprivacy */; };
-		84A9B7439DF3CA6DB150A370 /* libPods-IPTVApp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 825386028BB19A083A896DD4 /* libPods-IPTVApp.a */; };
+		425103542D3B73409E7C2A4F /* libPods-IPTVApp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F19488AAC05AEA5F6F9B68C4 /* libPods-IPTVApp.a */; };
+		6A82C217352CFEF13607F6CC /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 4820D654350D2AFB44F7B699 /* PrivacyInfo.xcprivacy */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
+		C3EF6E2C5B24C8141EEFCA18 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFBECE34EF27AA9487E458D1 /* ExpoModulesProvider.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
-		FEA53A5C54FDE1DF55C06011 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A66F8C20DACDE8CC130742 /* ExpoModulesProvider.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		13B07F961A680F5B00A75B9A /* IPTVApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = IPTVApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = IPTVApp/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = IPTVApp/Info.plist; sourceTree = "<group>"; };
-		77B24118324D2D7ED0E9732E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = IPTVApp/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		825386028BB19A083A896DD4 /* libPods-IPTVApp.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-IPTVApp.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4820D654350D2AFB44F7B699 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = IPTVApp/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		5A4A92DF57CA86D3C9B88CED /* Pods-IPTVApp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IPTVApp.release.xcconfig"; path = "Target Support Files/Pods-IPTVApp/Pods-IPTVApp.release.xcconfig"; sourceTree = "<group>"; };
+		86762AB254904D344A19A8DB /* Pods-IPTVApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IPTVApp.debug.xcconfig"; path = "Target Support Files/Pods-IPTVApp/Pods-IPTVApp.debug.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = IPTVApp/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		C8A66F8C20DACDE8CC130742 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-IPTVApp/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
-		CD855CFF6B09350BD5F7B768 /* Pods-IPTVApp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IPTVApp.release.xcconfig"; path = "Target Support Files/Pods-IPTVApp/Pods-IPTVApp.release.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = IPTVApp/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* IPTVApp-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "IPTVApp-Bridging-Header.h"; path = "IPTVApp/IPTVApp-Bridging-Header.h"; sourceTree = "<group>"; };
-		F283D1779FA51EE76AE19852 /* Pods-IPTVApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IPTVApp.debug.xcconfig"; path = "Target Support Files/Pods-IPTVApp/Pods-IPTVApp.debug.xcconfig"; sourceTree = "<group>"; };
+		F19488AAC05AEA5F6F9B68C4 /* libPods-IPTVApp.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-IPTVApp.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		FFBECE34EF27AA9487E458D1 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-IPTVApp/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -37,7 +37,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				84A9B7439DF3CA6DB150A370 /* libPods-IPTVApp.a in Frameworks */,
+				425103542D3B73409E7C2A4F /* libPods-IPTVApp.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -53,7 +53,7 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				77B24118324D2D7ED0E9732E /* PrivacyInfo.xcprivacy */,
+				4820D654350D2AFB44F7B699 /* PrivacyInfo.xcprivacy */,
 			);
 			name = IPTVApp;
 			sourceTree = "<group>";
@@ -62,25 +62,32 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				825386028BB19A083A896DD4 /* libPods-IPTVApp.a */,
+				F19488AAC05AEA5F6F9B68C4 /* libPods-IPTVApp.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		6E1CED085D91A820138CA63B /* Pods */ = {
+		3C460CBA0358C0F11992D9AE /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				F283D1779FA51EE76AE19852 /* Pods-IPTVApp.debug.xcconfig */,
-				CD855CFF6B09350BD5F7B768 /* Pods-IPTVApp.release.xcconfig */,
+				86762AB254904D344A19A8DB /* Pods-IPTVApp.debug.xcconfig */,
+				5A4A92DF57CA86D3C9B88CED /* Pods-IPTVApp.release.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
-		738EEF1F05CE3C200E456EAC /* IPTVApp */ = {
+		70A3EB02591A68E75431F9FC /* ExpoModulesProviders */ = {
 			isa = PBXGroup;
 			children = (
-				C8A66F8C20DACDE8CC130742 /* ExpoModulesProvider.swift */,
+				82FF0A02F54E7E1509F44374 /* IPTVApp */,
+			);
+			name = ExpoModulesProviders;
+			sourceTree = "<group>";
+		};
+		82FF0A02F54E7E1509F44374 /* IPTVApp */ = {
+			isa = PBXGroup;
+			children = (
+				FFBECE34EF27AA9487E458D1 /* ExpoModulesProvider.swift */,
 			);
 			name = IPTVApp;
 			sourceTree = "<group>";
@@ -99,8 +106,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				6E1CED085D91A820138CA63B /* Pods */,
-				ABCB03A763E1F4B985662869 /* ExpoModulesProviders */,
+				3C460CBA0358C0F11992D9AE /* Pods */,
+				70A3EB02591A68E75431F9FC /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -113,14 +120,6 @@
 				13B07F961A680F5B00A75B9A /* IPTVApp.app */,
 			);
 			name = Products;
-			sourceTree = "<group>";
-		};
-		ABCB03A763E1F4B985662869 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				738EEF1F05CE3C200E456EAC /* IPTVApp */,
-			);
-			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 		BB2F792B24A3F905000567C9 /* Supporting */ = {
@@ -140,13 +139,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "IPTVApp" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				5E3E71251F291E48D69B97D6 /* [Expo] Configure project */,
+				65606816F50B392530066EFF /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				49D9AFBC5FB0DFBB1EFB39DF /* [CP] Embed Pods Frameworks */,
+				BD7B5F4B6FDA139EDC5B8EDB /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -167,8 +166,6 @@
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
 						LastSwiftMigration = 1250;
-						DevelopmentTeam = "W34S8K6898";
-						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -198,7 +195,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				4752BA5242F6DAA8A5BFB2EA /* PrivacyInfo.xcprivacy in Resources */,
+				6A82C217352CFEF13607F6CC /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -244,31 +241,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		49D9AFBC5FB0DFBB1EFB39DF /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-IPTVApp/Pods-IPTVApp-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/MobileVLCKit/MobileVLCKit.framework/MobileVLCKit",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MobileVLCKit.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/React.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReactNativeDependencies.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-IPTVApp/Pods-IPTVApp-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		5E3E71251F291E48D69B97D6 /* [Expo] Configure project */ = {
+		65606816F50B392530066EFF /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -352,6 +325,30 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-IPTVApp/Pods-IPTVApp-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
+		BD7B5F4B6FDA139EDC5B8EDB /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-IPTVApp/Pods-IPTVApp-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/MobileVLCKit/MobileVLCKit.framework/MobileVLCKit",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MobileVLCKit.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/React.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReactNativeDependencies.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-IPTVApp/Pods-IPTVApp-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -360,7 +357,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				FEA53A5C54FDE1DF55C06011 /* ExpoModulesProvider.swift in Sources */,
+				C3EF6E2C5B24C8141EEFCA18 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -369,12 +366,15 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = F283D1779FA51EE76AE19852 /* Pods-IPTVApp.debug.xcconfig */;
+			baseConfigurationReference = 86762AB254904D344A19A8DB /* Pods-IPTVApp.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = IPTVApp/IPTVApp.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = W34S8K6898;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
@@ -395,25 +395,26 @@
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.ilyassulen.iptvapp;
 				PRODUCT_NAME = IPTVApp;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "IPTVApp/IPTVApp-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
-				DEVELOPMENT_TEAM = "W34S8K6898";
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 			};
 			name = Debug;
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = CD855CFF6B09350BD5F7B768 /* Pods-IPTVApp.release.xcconfig */;
+			baseConfigurationReference = 5A4A92DF57CA86D3C9B88CED /* Pods-IPTVApp.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = IPTVApp/IPTVApp.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = W34S8K6898;
 				INFOPLIST_FILE = IPTVApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -429,13 +430,11 @@
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.ilyassulen.iptvapp;
 				PRODUCT_NAME = IPTVApp;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "IPTVApp/IPTVApp-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
-				DEVELOPMENT_TEAM = "W34S8K6898";
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 			};
 			name = Release;
 		};
