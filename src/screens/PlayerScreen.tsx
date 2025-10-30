@@ -12,7 +12,7 @@ import {
   Easing,
   ViewStyle,
 } from "react-native";
-import { VideoView } from "expo-video";
+import Video from "react-native-video";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
@@ -275,21 +275,24 @@ export default function PlayerScreen({ route, navigation }: any) {
               style={StyleSheet.absoluteFill}
               onPress={enterFullscreen}
             >
-              <VideoView
+              <Video
                 ref={videoRef}
                 source={{
                   uri: currentUrl,
-                  overrideFileExtensionAndroid: "m3u8",
-                  contentType: "application/vnd.apple.mpegurl",
                   headers: {
-                    "User-Agent": "ExoPlayerLib/2.15.1 (Linux;Android 11)",
+                    "User-Agent": "IPTV-Smarters-Player/3.0",
                     "Referer": currentUrl.split("/live/")[0] + "/",
                     "Origin": currentUrl.split("/live/")[0],
                   },
                 }}
                 style={StyleSheet.absoluteFill}
-                shouldPlay={isPlaying}
                 resizeMode="contain"
+                controls={false}
+                paused={!isPlaying}
+                onError={(err) => console.log("❌ Player Fehler:", err)}
+                onLoadStart={() => console.log("⏳ Lade Stream...")}
+                onLoad={() => console.log("✅ Stream gestartet!")}
+                onEnd={() => console.log("⏹️ Stream beendet")}
               />
             </TouchableOpacity>
           </Animated.View>
@@ -300,20 +303,24 @@ export default function PlayerScreen({ route, navigation }: any) {
               activeOpacity={1}
               onPress={handleVideoPress}
             >
-              <VideoView
+              <Video
                 ref={videoRef}
                 source={{
                   uri: currentUrl,
-                  overrideFileExtensionAndroid: "m3u8",
                   headers: {
-                    "User-Agent": "ExoPlayerLib/2.15.1 (Linux;Android 11)",
+                    "User-Agent": "IPTV-Smarters-Player/3.0",
                     "Referer": currentUrl.split("/live/")[0] + "/",
                     "Origin": currentUrl.split("/live/")[0],
                   },
                 }}
                 style={StyleSheet.absoluteFill}
-                shouldPlay={isPlaying}
                 resizeMode="contain"
+                controls={false}
+                paused={!isPlaying}
+                onError={(err) => console.log("❌ Player Fehler:", err)}
+                onLoadStart={() => console.log("⏳ Lade Stream...")}
+                onLoad={() => console.log("✅ Stream gestartet!")}
+                onEnd={() => console.log("⏹️ Stream beendet")}
               />
             </TouchableOpacity>
 

@@ -15,7 +15,6 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import * as Font from "expo-font";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BlurView } from "expo-blur";
-import { buildApiUrl } from "../api/config";
 
 export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
@@ -30,9 +29,6 @@ export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const spinAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
-
-  const MOVIES_URL = buildApiUrl("/iptv/movies");
-  const SERIES_URL = buildApiUrl("/iptv/series");
 
   const languageLabels: Record<string, string> = {
     DE: "Deutsch",
@@ -79,15 +75,29 @@ export default function HomeScreen() {
         }
       }
 
+      // Session aus AsyncStorage holen (wie Smarters/TiviMate: direkt Xtream API)
+      const sessionRaw = await AsyncStorage.getItem("iptv_session");
+      if (!sessionRaw) {
+          throw new Error("Keine Xtream-Session gefunden. Bitte erneut einloggen.");
+      }
+      const { serverUrl, username, password } = JSON.parse(sessionRaw);
+      const base = (serverUrl || "").replace(/\/+$/, "");
+
+      const vodUrl = `${base}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_vod_streams`;
+      const seriesUrl = `${base}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_series`;
+
       const [moviesRes, seriesRes] = await Promise.all([
-          fetch(MOVIES_URL),
-          fetch(SERIES_URL),
+          fetch(vodUrl, { headers: { Accept: "application/json" } }),
+          fetch(seriesUrl, { headers: { Accept: "application/json" } }),
       ]);
 
       const moviesText = await moviesRes.text();
       const seriesText = await seriesRes.text();
 
-      if (!moviesText || !seriesText) throw new Error("Server hat keine Daten gesendet");
+      if (!moviesText || !seriesText) {
+          console.error("❌ Leere Antwort vom Xtream-Server:", { vodUrl, seriesUrl });
+          throw new Error("Server hat keine Daten gesendet");
+      }
 
       let moviesData, seriesData;
       try {
@@ -98,8 +108,8 @@ export default function HomeScreen() {
           throw new Error("Ungültige JSON-Antwort vom Server");
       }
 
-      const allMovies = moviesData?.movies || [];
-      const allSeries = seriesData?.series || [];
+      const allMovies = Array.isArray(moviesData) ? moviesData : moviesData.movies || [];
+      const allSeries = Array.isArray(seriesData) ? seriesData : seriesData.series || [];
 
       const detected = Array.from(
         new Set([...detectLanguages(allMovies), ...detectLanguages(allSeries)])

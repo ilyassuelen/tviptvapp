@@ -60,24 +60,32 @@ export default function MoviesScreen() {
         if (!saved) return;
         const { serverUrl, username, password } = JSON.parse(saved);
 
-        const res = await fetch(
-            `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_vod_streams`
+        // 1️⃣ Kategorien laden
+        const catRes = await fetch(
+          `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_vod_categories`
         );
-        const text = await res.text();
-        if (!text) throw new Error("Server hat keine Daten gesendet");
-        let data;
-        try {
-            data = JSON.parse(text);
-        } catch {
-            console.error("❌ Ungültige JSON-Antwort:", text.slice(0, 200));
-            throw new Error("Ungültige JSON-Antwort vom Server");
-        }
+        const catText = await catRes.text();
+        const categories = JSON.parse(catText);
 
+        // 2️⃣ Filme laden
+        const movieRes = await fetch(
+          `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_vod_streams`
+        );
+        const movieText = await movieRes.text();
+        const movies = JSON.parse(movieText);
+
+        // 3️⃣ Kategorie-Map aufbauen
+        const catMap: Record<string, string> = {};
+        categories.forEach((c: any) => {
+          catMap[c.category_id] = c.category_name;
+        });
+
+        // 4️⃣ Filme nach Kategorie gruppieren
         const grouped: Record<string, any[]> = {};
-        data.forEach((movie: any) => {
-          const cat = movie.category_name || "Unbekannt";
-          if (!grouped[cat]) grouped[cat] = [];
-          grouped[cat].push(movie);
+        movies.forEach((movie: any) => {
+          const catName = catMap[movie.category_id] || "Unbekannt";
+          if (!grouped[catName]) grouped[catName] = [];
+          grouped[catName].push(movie);
         });
 
         const categoryList = Object.entries(grouped).map(([category_name, movies]) => ({

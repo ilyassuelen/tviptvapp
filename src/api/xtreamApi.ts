@@ -79,10 +79,58 @@ export async function buildStreamUrl(
   streamType?: string
 ): Promise<string> {
   ensureValidInfo(info);
-  let typePath = "live";
-  if (streamType?.toLowerCase().includes("movie")) typePath = "movie";
-  else if (streamType?.toLowerCase().includes("series")) typePath = "series";
-  const streamUrl = `${info.serverUrl}/${typePath}/${info.username}/${info.password}/${streamId}.m3u8`;
-  console.log(`🎯 Stream direkt (ohne Proxy): ${streamUrl}`);
-  return streamUrl;
+
+  const base = info.serverUrl.replace(/\/$/, "");
+  let url;
+
+  // Falls es sich um einen Film handelt, zuerst container_extension abrufen
+  if (streamType?.toLowerCase().includes("movie")) {
+    try {
+      const vodInfoUrl = `${base}/player_api.php?username=${info.username}&password=${info.password}&action=get_vod_info&vod_id=${streamId}`;
+      console.log("📡 Hole Film-Info von:", vodInfoUrl);
+      const response = await axios.get(vodInfoUrl, { validateStatus: () => true });
+      const rawExt = (response.data?.movie_data?.container_extension || "mp4").toLowerCase();
+
+      // iOS/AVPlayer kann z.B. mkv/avi/flv nicht abspielen → wie Smarters: HLS bevorzugen
+      const unsupported = new Set(["mkv", "avi", "flv", "wmv", "vob", "dat"]);
+      const candidates = unsupported.has(rawExt)
+        ? ["m3u8", "mp4", rawExt]
+        : ["m3u8", rawExt, "mp4"]; // bevorzugt HLS, dann Original, dann MP4
+
+      // wir liefern die erste Kandidaten-URL zurück; PlayerScreen hat zusätzliches Retry
+      const ext = candidates[0];
+      url = `${base}/movie/${info.username}/${info.password}/${streamId}.${ext}`;
+    } catch (err) {
+      console.warn("⚠️ Fehler beim Abrufen der Film-Info:", err);
+      // Fallback: zuerst HLS versuchen, dann MP4
+      url = `${base}/movie/${info.username}/${info.password}/${streamId}.m3u8`;
+    }
+
+  // Falls es sich um eine Serie handelt, ebenfalls container_extension abrufen
+  } else if (streamType?.toLowerCase().includes("series")) {
+    try {
+      const seriesInfoUrl = `${base}/player_api.php?username=${info.username}&password=${info.password}&action=get_series_info&series_id=${streamId}`;
+      console.log("📡 Hole Serien-Info von:", seriesInfoUrl);
+      const response = await axios.get(seriesInfoUrl, { validateStatus: () => true });
+      const rawExt = (response.data?.episodes?.[0]?.container_extension || "mp4").toLowerCase();
+
+      const unsupported = new Set(["mkv", "avi", "flv", "wmv", "vob", "dat"]);
+      const candidates = unsupported.has(rawExt)
+        ? ["m3u8", "mp4", rawExt]
+        : ["m3u8", rawExt, "mp4"]; // bevorzugt HLS
+
+      const ext = candidates[0];
+      url = `${base}/series/${info.username}/${info.password}/${streamId}.${ext}`;
+    } catch (err) {
+      console.warn("⚠️ Fehler beim Abrufen der Serien-Info:", err);
+      url = `${base}/series/${info.username}/${info.password}/${streamId}.m3u8`;
+    }
+
+  // Standardmäßig: Live-Stream (.m3u8)
+  } else {
+    url = `${base}/live/${info.username}/${info.password}/${streamId}.m3u8`;
+  }
+
+  console.log(`🎯 Stream direkt (ohne Proxy): ${url}`);
+  return url;
 }

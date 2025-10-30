@@ -39,31 +39,38 @@ export default function SeriesScreen() {
         const saved = await AsyncStorage.getItem("iptv_session");
         if (!saved) throw new Error("Keine gespeicherte Session – bitte neu einloggen.");
         const { username, password, serverUrl } = JSON.parse(saved);
-        const res = await fetch(
-            `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_series`
+
+        // 1️⃣ Kategorien abrufen
+        const catRes = await fetch(
+          `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_series_categories`
         );
-        const text = await res.text();
-        if (!text) throw new Error("Server hat keine Daten gesendet");
-        let data;
-        try {
-            data = JSON.parse(text);
-        } catch {
-            console.error("❌ Ungültige JSON-Antwort:", text.slice(0, 200));
-            throw new Error("Ungültige JSON-Antwort vom Server");
-        }
+        const catText = await catRes.text();
+        const categories = JSON.parse(catText);
 
-        // Xtream kann als Array antworten oder als Objekt {series:[...]}
-        const list: any[] = Array.isArray(raw) ? raw : (raw.series ?? []);
+        // 2️⃣ Serien abrufen
+        const seriesRes = await fetch(
+          `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_series`
+        );
+        const seriesText = await seriesRes.text();
+        const series = JSON.parse(seriesText);
 
+        // 3️⃣ Map für Kategorie-Namen
+        const catMap: Record<string, string> = {};
+        categories.forEach((c: any) => {
+          catMap[c.category_id] = c.category_name;
+        });
+
+        // 4️⃣ Serien nach Kategorie gruppieren
         const grouped: Record<string, any[]> = {};
-        list.forEach((serie: any) => {
-          const cat = serie.category_name || "Unbekannt";
-          if (!grouped[cat]) grouped[cat] = [];
-          grouped[cat].push(serie);
+        series.forEach((serie: any) => {
+          const catName = catMap[serie.category_id] || "Unbekannt";
+          if (!grouped[catName]) grouped[catName] = [];
+          grouped[catName].push(serie);
         });
 
         const categoryList = Object.entries(grouped).map(([category_name, series]) => ({
-          category_name, series,
+          category_name,
+          series,
         }));
 
         setSeriesCategories(categoryList);
