@@ -12,12 +12,12 @@ import {
   Easing,
   ViewStyle,
 } from "react-native";
-import Video from "react-native-video";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { buildStreamUrl } from "../api/xtreamApi";
+import { VLCPlayer } from "react-native-vlc-media-player";
 
 export default function PlayerScreen({ route, navigation }: any) {
   const { channels, currentIndex, session: sessionFromRoute } = route.params;
@@ -29,7 +29,7 @@ export default function PlayerScreen({ route, navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const videoRef = useRef<VideoView>(null);
+  //const videoRef = useRef<VideoView>(null);
   const progress = useRef(new Animated.Value(0)).current;
   const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -87,44 +87,28 @@ export default function PlayerScreen({ route, navigation }: any) {
 
   // 🧠 smarter Stream-Start mit alternativen Fallbacks
   const startStream = async (retryVariant = 0) => {
-    // 🧹 Alten Player ausblenden & entladen
-    if (videoRef.current) {
-      try {
-        await videoRef.current.pauseAsync?.();
-        await videoRef.current.unloadAsync?.();
-      } catch (e) {
-        console.log("⚠️ alter Player konnte nicht entladen werden:", e);
-      }
-    }
-    setCurrentUrl(null); // <— Entfernt alten Player vor neuem Stream
+    setCurrentUrl(null);
+    setLoading(true);
+    setErrorMsg(null);
+
     try {
-      setLoading(true);
       const ch = currentChannel;
       if (!session) {
-        console.log("⚠️ Session noch nicht geladen – Streamstart abgebrochen");
-        setErrorMsg("Sitzung noch nicht geladen. Bitte kurz warten oder neu versuchen.");
+        setErrorMsg("Sitzung noch nicht geladen. Bitte neu versuchen.");
         setLoading(false);
         return;
       }
 
-      // 🧩 Stream-URL über Xtream API bauen
+      // 🎯 Basierend auf Typ Stream-URL erstellen
       let streamUrl = await buildStreamUrl(session, ch.stream_id, ch.stream_type);
 
-      // 🔁 Smarters-like Retry-System bei Filmen/Serien
-      if (retryVariant === 1) streamUrl = streamUrl.replace(".m3u8", ".mp4");
-      if (retryVariant === 2) streamUrl = streamUrl.replace(".mp4", ".ts");
+      // 🔁 Smarter Fallback falls 1. Versuch fehlschlägt
+      const variants = [streamUrl, streamUrl.replace(".m3u8", ".mp4"), streamUrl.replace(".mp4", ".ts")];
+      const tryUrl = variants[retryVariant] || variants[0];
 
-      console.log(`🎬 Lade Stream (Versuch ${retryVariant + 1}): ${streamUrl}`);
-
-      setCurrentUrl(streamUrl);
-      setErrorMsg(null);
+      console.log(`🎬 Lade Stream (Versuch ${retryVariant + 1}): ${tryUrl}`);
+      setCurrentUrl(tryUrl);
       setIsPlaying(true);
-
-      const historyRaw = await AsyncStorage.getItem("stream_history");
-      const history = historyRaw ? JSON.parse(historyRaw) : [];
-      const newEntry = { ...ch, stream_url: streamUrl, timestamp: Date.now() };
-      const updated = [newEntry, ...history.filter((h: any) => h.name !== ch.name)].slice(0, 10);
-      await AsyncStorage.setItem("stream_history", JSON.stringify(updated));
     } catch (err) {
       console.log("❌ Fehler beim Streamstart:", err);
       if (retryVariant < 2) {
@@ -275,24 +259,20 @@ export default function PlayerScreen({ route, navigation }: any) {
               style={StyleSheet.absoluteFill}
               onPress={enterFullscreen}
             >
-              <Video
-                ref={videoRef}
-                source={{
-                  uri: currentUrl,
-                  headers: {
-                    "User-Agent": "IPTV-Smarters-Player/3.0",
-                    "Referer": currentUrl.split("/live/")[0] + "/",
-                    "Origin": currentUrl.split("/live/")[0],
-                  },
-                }}
+              <VLCPlayer
                 style={StyleSheet.absoluteFill}
-                resizeMode="contain"
-                controls={false}
-                paused={!isPlaying}
-                onError={(err) => console.log("❌ Player Fehler:", err)}
-                onLoadStart={() => console.log("⏳ Lade Stream...")}
-                onLoad={() => console.log("✅ Stream gestartet!")}
-                onEnd={() => console.log("⏹️ Stream beendet")}
+                source={{ uri: currentUrl }}
+                autoPlay
+                initType="network"
+                initOptions={
+                  currentChannel.stream_type === "live"
+                    ? ['--network-caching=500', '--rtsp-tcp', '--avcodec-hw=any']
+                    : ['--network-caching=3000', '--no-drop-late-frames', '--no-skip-frames', '--rtsp-tcp', '--avcodec-hw=any']
+                }
+                onError={(err) => console.log("❌ VLC Fehler:", err)}
+                onPlaying={() => console.log("▶️ VLC Stream läuft")}
+                onBuffering={() => console.log("⏳ VLC lädt...")}
+                onStopped={() => console.log("⏹️ VLC gestoppt")}
               />
             </TouchableOpacity>
           </Animated.View>
@@ -303,24 +283,20 @@ export default function PlayerScreen({ route, navigation }: any) {
               activeOpacity={1}
               onPress={handleVideoPress}
             >
-              <Video
-                ref={videoRef}
-                source={{
-                  uri: currentUrl,
-                  headers: {
-                    "User-Agent": "IPTV-Smarters-Player/3.0",
-                    "Referer": currentUrl.split("/live/")[0] + "/",
-                    "Origin": currentUrl.split("/live/")[0],
-                  },
-                }}
+              <VLCPlayer
                 style={StyleSheet.absoluteFill}
-                resizeMode="contain"
-                controls={false}
-                paused={!isPlaying}
-                onError={(err) => console.log("❌ Player Fehler:", err)}
-                onLoadStart={() => console.log("⏳ Lade Stream...")}
-                onLoad={() => console.log("✅ Stream gestartet!")}
-                onEnd={() => console.log("⏹️ Stream beendet")}
+                source={{ uri: currentUrl }}
+                autoPlay
+                initType="network"
+                initOptions={
+                  currentChannel.stream_type === "live"
+                    ? ['--network-caching=500', '--rtsp-tcp', '--avcodec-hw=any']
+                    : ['--network-caching=3000', '--no-drop-late-frames', '--no-skip-frames', '--rtsp-tcp', '--avcodec-hw=any']
+                }
+                onError={(err) => console.log("❌ VLC Fehler:", err)}
+                onPlaying={() => console.log("▶️ VLC Stream läuft")}
+                onBuffering={() => console.log("⏳ VLC lädt...")}
+                onStopped={() => console.log("⏹️ VLC gestoppt")}
               />
             </TouchableOpacity>
 

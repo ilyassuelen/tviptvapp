@@ -1,14 +1,16 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import {
   View, Text, TouchableOpacity, Image, FlatList, ActivityIndicator, ScrollView,
-  SafeAreaView, StatusBar, StyleSheet, Platform, Animated, TextInput, TouchableWithoutFeedback
+  StatusBar, StyleSheet, Platform, Animated, TextInput, TouchableWithoutFeedback
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import axios from "axios";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import * as Font from "expo-font";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getXtreamInfo, setXtreamConnection } from "../store";
+import { VLCPlayer } from "react-native-vlc-media-player";
 
 const API_PATH = "/player_api.php";
 
@@ -23,7 +25,6 @@ export default function LiveScreen() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchText, setSearchText] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-80)).current;
@@ -118,7 +119,6 @@ export default function LiveScreen() {
       ]).start(() => {
         setSearchVisible(false);
         setSearchText("");
-        setSearchResults([]);
       });
     } else {
       setSearchVisible(true);
@@ -130,13 +130,11 @@ export default function LiveScreen() {
   };
 
   // 🔍 Suche in Sendern (innerhalb geladener Kategorie)
-  const handleSearch = (text: string) => {
-    setSearchText(text);
-    if (!text.trim()) return setSearchResults([]);
-    const lower = text.toLowerCase();
-    const filtered = channels.filter((ch) => ch.name?.toLowerCase().includes(lower));
-    setSearchResults(filtered);
-  };
+  const searchResults = useMemo(() => {
+    if (!searchText.trim()) return [];
+    const lower = searchText.toLowerCase();
+    return channels.filter(ch => ch.name?.toLowerCase().includes(lower));
+  }, [searchText, channels]);
 
   // Ladezustand
   if (loading || !fontsLoaded) {
@@ -155,12 +153,13 @@ export default function LiveScreen() {
         <Ionicons name="warning" size={28} color="red" />
         <Text style={{ color: "red", marginTop: 10, textAlign: "center" }}>{error}</Text>
         <TouchableOpacity
-          onPress={() => {
+          onPress={async () => {
             setError(null);
             setLoading(true);
             setCategories([]);
             setSelectedCategory(null);
             setChannels([]);
+            await loadCategories();
           }}
           style={styles.retryButton}
         >
@@ -208,7 +207,19 @@ export default function LiveScreen() {
             keyExtractor={(_, index) => index.toString()}
             renderItem={({ item, index }) => (
               <TouchableOpacity
-                onPress={() => navigation.navigate("Player", { channels, currentIndex: index })}
+                onPress={() => {
+                  const selected = channels[index];
+                  const isLive =
+                    selected.stream_type === "live" ||
+                    selected.category_name?.toLowerCase().includes("live") ||
+                    selected.stream_url?.includes("/live/");
+                  navigation.navigate("Player", {
+                    channels,
+                    currentIndex: index,
+                    streamUrl: selected.stream_url || selected.url,
+                    isLive,
+                  });
+                }}
                 style={styles.channelItem}
                 activeOpacity={0.8}
               >
@@ -261,7 +272,7 @@ export default function LiveScreen() {
                 placeholder="Sender suchen..."
                 placeholderTextColor="#aaa"
                 value={searchText}
-                onChangeText={handleSearch}
+                onChangeText={setSearchText}
                 autoFocus
               />
             </Animated.View>

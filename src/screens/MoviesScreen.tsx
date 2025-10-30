@@ -11,7 +11,9 @@ import {
   Animated,
   FlatList,
   TouchableWithoutFeedback,
+  StyleSheet,
 } from "react-native";
+import { VLCPlayer } from "react-native-vlc-media-player";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import * as Font from "expo-font";
