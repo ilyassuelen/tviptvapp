@@ -216,6 +216,10 @@ export default function MovieDetailScreen() {
         let castData: any[] = [];
         if (summary.wikidataId) castData = await fetchCastFromWikidata(summary.wikidataId);
         if (castData.length === 0) {
+            castData = [];
+        }
+        if (summary.wikidataId) castData = await fetchCastFromWikidata(summary.wikidataId);
+        if (castData.length === 0) {
           const backupCast = await fetchCastFromWikipediaHTML(summary.lang || "en", summary.title);
           castData = backupCast;
         }

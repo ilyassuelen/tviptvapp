@@ -80,11 +80,23 @@ export default function HomeScreen() {
       }
 
       const [moviesRes, seriesRes] = await Promise.all([
-        fetch(MOVIES_URL),
-        fetch(SERIES_URL),
+          fetch(MOVIES_URL),
+          fetch(SERIES_URL),
       ]);
-      const moviesData = await moviesRes.json();
-      const seriesData = await seriesRes.json();
+
+      const moviesText = await moviesRes.text();
+      const seriesText = await seriesRes.text();
+
+      if (!moviesText || !seriesText) throw new Error("Server hat keine Daten gesendet");
+
+      let moviesData, seriesData;
+      try {
+          moviesData = JSON.parse(moviesText);
+          seriesData = JSON.parse(seriesText);
+      } catch {
+          console.error("❌ Ungültige JSON-Antwort:", moviesText.slice(0, 200), seriesText.slice(0, 200));
+          throw new Error("Ungültige JSON-Antwort vom Server");
+      }
 
       const allMovies = moviesData?.movies || [];
       const allSeries = seriesData?.series || [];

@@ -15,6 +15,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import * as Font from "expo-font";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { buildApiUrl } from "../api/config";
 
 function cleanTitle(rawTitle: string): string {
@@ -55,29 +56,40 @@ export default function MoviesScreen() {
 
     const loadMovies = async () => {
       try {
-        const res = await fetch(BACKEND_URL);
-        if (!res.ok) throw new Error("Fehler beim Abrufen der Movies");
-        const data = await res.json();
+        const saved = await AsyncStorage.getItem("iptv_session");
+        if (!saved) return;
+        const { serverUrl, username, password } = JSON.parse(saved);
+
+        const res = await fetch(
+            `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_vod_streams`
+        );
+        const text = await res.text();
+        if (!text) throw new Error("Server hat keine Daten gesendet");
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch {
+            console.error("❌ Ungültige JSON-Antwort:", text.slice(0, 200));
+            throw new Error("Ungültige JSON-Antwort vom Server");
+        }
 
         const grouped: Record<string, any[]> = {};
-        data.movies.forEach((movie: any) => {
+        data.forEach((movie: any) => {
           const cat = movie.category_name || "Unbekannt";
           if (!grouped[cat]) grouped[cat] = [];
           grouped[cat].push(movie);
         });
 
-        const categoryList = Object.entries(grouped).map(
-          ([category_name, movies]) => ({
-            category_name,
-            movies,
-          })
-        );
+        const categoryList = Object.entries(grouped).map(([category_name, movies]) => ({
+          category_name,
+          movies,
+        }));
 
         setMovieCategories(categoryList);
+        setLoading(false);
       } catch (err) {
-        console.error("❌ Fehler beim Laden der Movies:", err);
+        console.error("❌ Fehler beim Laden der Filme:", err);
         setError("Fehler beim Laden der Filme");
-      } finally {
         setLoading(false);
       }
     };

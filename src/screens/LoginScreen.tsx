@@ -10,10 +10,8 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
-import { loginXtream, getLiveStreams } from "../api/xtreamApi"; // ✅ neue Xtream-API
-import { setXtreamConnection } from "../store";
 import axios from "axios";
-import { buildApiUrl } from "../api/config";
+import { setXtreamConnection } from "../store";
 
 export default function LoginScreen() {
   const navigation = useNavigation<any>();
@@ -23,6 +21,7 @@ export default function LoginScreen() {
   const [statusLine, setStatusLine] = useState("Warte auf Eingabe...");
   const [message, setMessage] = useState<string | null>(null);
 
+  // Standardwerte
   const [baseUrl, setBaseUrl] = useState("http://m3u.best-smarter.me");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -45,59 +44,45 @@ export default function LoginScreen() {
       setMessage(null);
       setStatusLine("🔗 Verbinde mit Server...");
 
-      if (mode === "m3u") {
-        setMessage("⚠️ M3U-Modus ist noch nicht aktiviert – bitte Xtream wählen");
-        return;
-      }
-
       if (!baseUrl || !username || !password) {
         setMessage("❌ Bitte alle Felder ausfüllen");
         return;
       }
 
-      // 🧠 Login gegen Xtream-API
-      const res = await axios.post(buildApiUrl("/auth/connect-xtream"), {
-          base_url: baseUrl,
-          username,
-          password,
-      });
-      if (res.data?.status !== "success") throw new Error("Backend-Login fehlgeschlagen");
-      // Verbindung im globalen Zustand speichern
-      setXtreamConnection(username, password, baseUrl);
+      // 🧠 Basis-URL aufräumen
+      let cleanBase = baseUrl.replace(/\/player_api\.php.*$/, "").replace(/\/+$/, "");
+      if (!cleanBase.startsWith("http")) cleanBase = "http://" + cleanBase;
 
-      const session = { serverUrl: baseUrl, username, password };
-      setStatusLine("✅ Login erfolgreich – Lade Kanäle...");
+      const apiUrl = `${cleanBase}/player_api.php?username=${username}&password=${password}`;
+      console.log("📡 Verbindung zu:", apiUrl);
 
-      // 📺 Live-Sender abrufen
-      const channels = await getLiveStreams(session);
-      console.log(`📡 ${channels.length} Kanäle empfangen`);
+      const res = await axios.get(apiUrl);
+      const data = res.data;
+
+      if (!data?.user_info || data.user_info.auth !== 1) {
+        throw new Error("❌ Login fehlgeschlagen – bitte prüfen");
+      }
+
+      console.log("✅ Xtream Login erfolgreich:", data.user_info.username);
+
+      // Globale Verbindung merken
+      setXtreamConnection(username, password, cleanBase);
 
       // 💾 Session speichern
+      const session = { serverUrl: cleanBase, username, password };
       await AsyncStorage.setItem("iptv_session", JSON.stringify(session));
 
       setMessage("✅ Verbindung erfolgreich!");
-      setStatusLine("✅ Bereit – starte Wiedergabe...");
+      setStatusLine("✅ Login erfolgreich – lade Startseite...");
 
-      // 🎬 Zum PlayerScreen navigieren
+      // 👉 Nach erfolgreichem Login direkt zur Hauptansicht
       setTimeout(() => {
-        navigation.reset({
-          index: 0,
-          routes: [
-            {
-              name: "Player",
-              params: {
-                channels,
-                currentIndex: 0,
-                session,
-              },
-            },
-          ],
-        });
+        navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
       }, 1000);
     } catch (err: any) {
       console.error("❌ Fehler:", err);
-      setMessage("❌ Verbindung fehlgeschlagen");
-      setStatusLine("❌ Fehler – siehe Konsole");
+      setMessage("❌ Verbindung fehlgeschlagen – bitte prüfen");
+      setStatusLine("❌ Keine Verbindung");
     } finally {
       setLoading(false);
     }
@@ -140,7 +125,7 @@ export default function LoginScreen() {
       {mode === "xtream" ? (
         <>
           <TextInput
-            placeholder="Base URL"
+            placeholder="Base URL (z. B. http://m3u.best-smarter.me)"
             placeholderTextColor="#777"
             style={styles.input}
             value={baseUrl}

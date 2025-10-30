@@ -1,41 +1,28 @@
 import React from "react";
-import { SafeAreaView, View, TouchableOpacity, Platform } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import YoutubePlayer from "react-native-youtube-iframe";
-import { useRoute, useNavigation } from "@react-navigation/native";
+import { View, ActivityIndicator, Platform, StatusBar } from "react-native";
+import { useRoute } from "@react-navigation/native";
+import { WebView } from "react-native-webview";
 
 export default function TrailerScreen() {
   const route = useRoute<any>();
-  const navigation = useNavigation<any>();
-  const { videoId } = route.params;
-
+  const { url } = route.params || {};
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }}>
-      <View style={{ flex: 1 }}>
-        {/* 🔙 Zurück */}
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={{
-            position: "absolute",
-            top: Platform.OS === "ios" ? 20 : 30,
-            left: 20,
-            zIndex: 10,
-            backgroundColor: "rgba(0,0,0,0.4)",
-            borderRadius: 20,
-            padding: 6,
-          }}
-        >
-          <Ionicons name="arrow-back" size={26} color="#fff" />
-        </TouchableOpacity>
-
-        {/* ▶️ YouTube Player */}
-        <YoutubePlayer
-          height={"100%"}
-          width={"100%"}
-          play={true}
-          videoId={videoId}
+    <View style={{ flex: 1, backgroundColor: "#000", paddingTop: Platform.OS === "ios" ? 40 : StatusBar.currentHeight }}>
+      {url ? (
+        <WebView
+          source={{ uri: url }}
+          startInLoadingState
+          renderLoading={() => (
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+              <ActivityIndicator color="#ff5722" />
+            </View>
+          )}
         />
-      </View>
-    </SafeAreaView>
+      ) : (
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator color="#ff5722" />
+        </View>
+      )}
+    </View>
   );
 }

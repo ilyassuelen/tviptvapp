@@ -12,9 +12,11 @@ const config: ExpoConfig = {
     resizeMode: "contain",
     backgroundColor: "#000000",
   },
+
   ios: {
     supportsTablet: true,
     bundleIdentifier: "com.ilyassulen.iptvapp",
+    // 🔐 erlaubt HTTP (unsichere) Verbindungen zu deinem Server
     infoPlist: {
       NSAppTransportSecurity: {
         NSAllowsArbitraryLoads: true,
@@ -25,6 +27,10 @@ const config: ExpoConfig = {
             NSTemporaryExceptionAllowsInsecureHTTPLoads: true,
             NSTemporaryExceptionMinimumTLSVersion: "TLSv1.0",
           },
+          "87.106.10.34": {
+            NSIncludesSubdomains: true,
+            NSTemporaryExceptionAllowsInsecureHTTPLoads: true,
+          },
           "192.168.2.101": {
             NSIncludesSubdomains: true,
             NSTemporaryExceptionAllowsInsecureHTTPLoads: true,
@@ -33,17 +39,22 @@ const config: ExpoConfig = {
       },
     },
   },
+
   android: {
     package: "com.ilyassulen.iptvapp",
+    // ⚙️ erlaubt HTTP auf Android
+    usesCleartextTraffic: true,
     adaptiveIcon: {
       foregroundImage: "./assets/logo.png",
       backgroundColor: "#000000",
     },
   },
+
   web: {
     favicon: "./assets/logo.png",
   },
-  plugins: ["expo-font"],
+
+  plugins: ["expo-font", "expo-video", "expo-audio"],
 };
 
 export default config;

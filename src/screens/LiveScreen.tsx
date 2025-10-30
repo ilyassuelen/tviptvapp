@@ -1,26 +1,16 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  Image,
-  FlatList,
-  ActivityIndicator,
-  ScrollView,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Platform,
-  Animated,
-  TextInput,
-  TouchableWithoutFeedback,
+  View, Text, TouchableOpacity, Image, FlatList, ActivityIndicator, ScrollView,
+  SafeAreaView, StatusBar, StyleSheet, Platform, Animated, TextInput, TouchableWithoutFeedback
 } from "react-native";
 import axios from "axios";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import * as Font from "expo-font";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getXtreamInfo, setXtreamConnection } from "../store";
 
-const API_BASE = "https://bromic-natalie-subhemispherically.ngrok-free.dev";
+const API_PATH = "/player_api.php";
 
 export default function LiveScreen() {
   const navigation = useNavigation<any>();
@@ -39,40 +29,81 @@ export default function LiveScreen() {
   const slideAnim = useRef(new Animated.Value(-80)).current;
 
   useEffect(() => {
+    // Load fonts first, then categories
     const loadFonts = async () => {
-      await Font.loadAsync({
-        Orbitron: require("../../assets/fonts/Prisma.ttf"),
-      });
-      setFontsLoaded(true);
+      try {
+        await Font.loadAsync({
+          Orbitron: require("../../assets/fonts/Prisma.ttf"),
+        });
+        setFontsLoaded(true);
+      } catch (err) {
+        setError("Fehler beim Laden der Schriftarten.");
+        setFontsLoaded(false);
+      }
     };
 
     const loadCategories = async () => {
       try {
-        const res = await axios.get(`${API_BASE}/iptv/categories`);
-        setCategories(res.data.categories || []);
+        const info = await ensureSession();
+        const res = await axios.get(
+          `${info.serverUrl}${API_PATH}`,
+          {
+            params: {
+              username: info.username,
+              password: info.password,
+              action: "get_live_categories",
+            },
+            timeout: 10000, // Timeout after 10 seconds
+          }
+        );
+        setCategories(Array.isArray(res.data) ? res.data : []);
       } catch (err: any) {
-        console.error("❌ Fehler beim Laden der Kategorien:", err.response?.data || err);
-        setError("Fehler beim Laden der Kategorien (404 oder keine Session)");
+        // Robust error handling for network issues and timeouts
+        if (err.code === "ECONNABORTED" || err.message?.includes("timeout")) {
+          setError("Netzwerk-Timeout beim Laden der Kategorien.");
+        } else if (err.message === "Network Error") {
+          setError("Netzwerkfehler beim Laden der Kategorien.");
+        } else {
+          console.error("❌ Fehler beim Laden der Kategorien:", err?.response?.data || err);
+          setError("Fehler beim Laden der Kategorien.");
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    loadFonts();
-    loadCategories();
+    // Sequence: load fonts first, then categories
+    (async () => {
+      await loadFonts();
+      await loadCategories();
+    })();
   }, []);
 
-  const loadChannels = async (categoryName: string) => {
+  const ensureSession = async () => {
+    let info = getXtreamInfo();
+    if (!info) {
+      const saved = await AsyncStorage.getItem("iptv_session");
+      if (!saved) throw new Error("Keine gespeicherte Session – bitte neu einloggen.");
+      const { username, password, serverUrl } = JSON.parse(saved);
+      setXtreamConnection(username, password, serverUrl);
+      info = { username, password, serverUrl };
+    }
+    return info!;
+  };
+
+  const loadChannels = async (categoryIdOrName: string) => {
     setLoadingChannels(true);
     try {
-      const res = await axios.get(`${API_BASE}/iptv/channels`, {
-        params: { category: categoryName },
+      const info = await ensureSession();
+      const res = await axios.get(`${info.serverUrl}${API_PATH}`, {
+        // Xtream akzeptiert category_id (Zahl/String). Dein Code übergab Namen – manche Panels mappen beides.
+        params: { username: info.username, password: info.password, action: "get_live_streams", category_id: categoryIdOrName }
       });
-      setChannels(res.data.channels || []);
-      setSelectedCategory(categoryName);
+      setChannels(Array.isArray(res.data) ? res.data : []);
+      setSelectedCategory(categoryIdOrName);
     } catch (err: any) {
-      console.error("❌ Fehler beim Laden der Sender:", err.response?.data || err);
-      setError("Fehler beim Laden der Sender (404 oder leer)");
+      console.error("❌ Fehler beim Laden der Sender:", err?.response?.data || err);
+      setError("Fehler beim Laden der Sender.");
     } finally {
       setLoadingChannels(false);
     }
@@ -98,21 +129,16 @@ export default function LiveScreen() {
     }
   };
 
-  // 🔍 Suche in Sendern
+  // 🔍 Suche in Sendern (innerhalb geladener Kategorie)
   const handleSearch = (text: string) => {
     setSearchText(text);
-    if (!text.trim()) {
-      setSearchResults([]);
-      return;
-    }
+    if (!text.trim()) return setSearchResults([]);
     const lower = text.toLowerCase();
-    const filtered = channels.filter((ch) =>
-      ch.name?.toLowerCase().includes(lower)
-    );
+    const filtered = channels.filter((ch) => ch.name?.toLowerCase().includes(lower));
     setSearchResults(filtered);
   };
 
-  // 🕐 Ladezustand
+  // Ladezustand
   if (loading || !fontsLoaded) {
     return (
       <View style={styles.center}>
@@ -122,7 +148,7 @@ export default function LiveScreen() {
     );
   }
 
-  // ⚠️ Fehleranzeige
+  // Fehler
   if (error) {
     return (
       <View style={styles.center}>
@@ -134,6 +160,7 @@ export default function LiveScreen() {
             setLoading(true);
             setCategories([]);
             setSelectedCategory(null);
+            setChannels([]);
           }}
           style={styles.retryButton}
         >
@@ -143,24 +170,12 @@ export default function LiveScreen() {
     );
   }
 
-  // 📺 Senderansicht
+  // Senderansicht (wie bei dir – behalten)
   if (selectedCategory) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <StatusBar barStyle="light-content" />
-
-        {/* HEADER analog zu MoviesScreen */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            backgroundColor: "#000",
-            paddingTop: Platform.OS === "ios" ? 45 : 25,
-            paddingBottom: 10,
-            paddingHorizontal: 14,
-          }}
-        >
+        <View style={styles.headerRow}>
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <TouchableOpacity
               onPress={() => {
@@ -171,28 +186,16 @@ export default function LiveScreen() {
             >
               <Ionicons name="arrow-back" size={22} color="#fff" />
             </TouchableOpacity>
-            <Text
-              style={{
-                color: "#fff",
-                fontSize: 14,
-                fontWeight: "700",
-                fontFamily: "Orbitron",
-              }}
-            >
+            <Text style={{ color: "#fff", fontSize: 14, fontWeight: "700", fontFamily: "Orbitron" }}>
               {selectedCategory}
             </Text>
           </View>
 
           <TouchableOpacity onPress={toggleSearch}>
-            <Ionicons
-              name={searchVisible ? "close" : "search"}
-              size={22}
-              color="#fff"
-            />
+            <Ionicons name={searchVisible ? "close" : "search"} size={22} color="#fff" />
           </TouchableOpacity>
         </View>
 
-        {/* Senderliste */}
         {loadingChannels ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color="#ff5722" />
@@ -205,16 +208,12 @@ export default function LiveScreen() {
             keyExtractor={(_, index) => index.toString()}
             renderItem={({ item, index }) => (
               <TouchableOpacity
-                onPress={() =>
-                  navigation.navigate("Player", { channels, currentIndex: index })
-                }
+                onPress={() => navigation.navigate("Player", { channels, currentIndex: index })}
                 style={styles.channelItem}
                 activeOpacity={0.8}
               >
                 <Image
-                  source={{
-                    uri: item.stream_icon || "https://via.placeholder.com/60x60",
-                  }}
+                  source={{ uri: item.stream_icon || "https://via.placeholder.com/60x60" }}
                   style={styles.channelLogo}
                 />
                 <Text style={styles.channelName}>{item.name}</Text>
@@ -228,18 +227,14 @@ export default function LiveScreen() {
           />
         )}
 
-        {/* 🔍 Suchoverlay */}
+        {/* Suchoverlay wie bei dir */}
         {searchVisible && (
           <Animated.View
             style={{
               position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
+              top: 0, left: 0, right: 0, bottom: 0,
               backgroundColor: "rgba(0,0,0,0.85)",
-              opacity: fadeAnim,
-              zIndex: 200,
+              opacity: fadeAnim, zIndex: 200,
             }}
           >
             <TouchableWithoutFeedback onPress={toggleSearch}>
@@ -261,8 +256,7 @@ export default function LiveScreen() {
                   borderRadius: 12,
                   paddingHorizontal: 15,
                   paddingVertical: 10,
-                  color: "#fff",
-                  fontSize: 16,
+                  color: "#fff", fontSize: 16,
                 }}
                 placeholder="Sender suchen..."
                 placeholderTextColor="#aaa"
@@ -278,41 +272,25 @@ export default function LiveScreen() {
               style={{
                 position: "absolute",
                 top: Platform.OS === "ios" ? 120 : 100,
-                left: 20,
-                right: 20,
+                left: 20, right: 20,
                 maxHeight: "70%",
                 backgroundColor: "rgba(20,20,20,0.95)",
-                borderRadius: 12,
-                paddingHorizontal: 10,
-                paddingVertical: 5,
+                borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5,
               }}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   onPress={() => {
                     setSearchVisible(false);
-                    navigation.navigate("Player", {
-                      channels: [item],
-                      currentIndex: 0,
-                    });
+                    navigation.navigate("Player", { channels: [item], currentIndex: 0 });
                   }}
                   style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    paddingVertical: 10,
-                    borderBottomWidth: 1,
-                    borderColor: "rgba(255,255,255,0.08)",
+                    flexDirection: "row", alignItems: "center",
+                    paddingVertical: 10, borderBottomWidth: 1, borderColor: "rgba(255,255,255,0.08)",
                   }}
                 >
                   <Image
-                    source={{
-                      uri: item.stream_icon || "https://via.placeholder.com/60x60",
-                    }}
-                    style={{
-                      width: 50,
-                      height: 50,
-                      borderRadius: 6,
-                      marginRight: 12,
-                    }}
+                    source={{ uri: item.stream_icon || "https://via.placeholder.com/60x60" }}
+                    style={{ width: 50, height: 50, borderRadius: 6, marginRight: 12 }}
                   />
                   <Text style={{ color: "#fff", fontSize: 15 }}>{item.name}</Text>
                 </TouchableOpacity>
@@ -324,40 +302,16 @@ export default function LiveScreen() {
     );
   }
 
-  // 🗂 Kategorienübersicht
+  // Kategorienübersicht (wie bei dir)
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" />
-
-      {/* HEADER wie MoviesScreen */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          backgroundColor: "#000",
-          paddingTop: Platform.OS === "ios" ? 45 : 25,
-          paddingBottom: 10,
-          paddingHorizontal: 14,
-        }}
-      >
-        <Text
-          style={{
-            color: "#fff",
-            fontSize: 19,
-            fontWeight: "700",
-            fontFamily: "Orbitron",
-          }}
-        >
+      <View style={styles.headerRow}>
+        <Text style={{ color: "#fff", fontSize: 19, fontWeight: "700", fontFamily: "Orbitron" }}>
           LIVE TV
         </Text>
-
         <TouchableOpacity onPress={toggleSearch}>
-          <Ionicons
-            name={searchVisible ? "close" : "search"}
-            size={22}
-            color="#fff"
-          />
+          <Ionicons name={searchVisible ? "close" : "search"} size={22} color="#fff" />
         </TouchableOpacity>
       </View>
 
@@ -371,15 +325,10 @@ export default function LiveScreen() {
             <TouchableOpacity
               key={index}
               style={styles.categoryItem}
-              onPress={() => loadChannels(cat.category_name)}
+              onPress={() => loadChannels(cat.category_id ?? cat.category_name)}
               activeOpacity={0.8}
             >
-              <Ionicons
-                name="tv-outline"
-                size={22}
-                color="#ff5722"
-                style={{ marginRight: 10 }}
-              />
+              <Ionicons name="tv-outline" size={22} color="#ff5722" style={{ marginRight: 10 }} />
               <Text style={styles.categoryName}>{cat.category_name}</Text>
             </TouchableOpacity>
           ))
@@ -391,67 +340,21 @@ export default function LiveScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#000" },
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#000",
-  },
+  center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#000" },
   headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#000",
-    paddingTop: Platform.OS === "ios" ? 25 : 10,
-    paddingBottom: 8,
-    paddingHorizontal: 14,
-    borderBottomColor: "#222",
-    borderBottomWidth: 1,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    backgroundColor: "#000", paddingTop: Platform.OS === "ios" ? 45 : 25, paddingBottom: 10, paddingHorizontal: 14,
   },
-
-  splitContainer: {
-    flex: 1,
-    flexDirection: "row",
-    backgroundColor: "#000",
-    marginTop: -8,
-  },
-  retryButton: {
-    marginTop: 16,
-    backgroundColor: "#ff5722",
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
+  retryButton: { marginTop: 16, backgroundColor: "#ff5722", paddingHorizontal: 20, paddingVertical: 8, borderRadius: 6 },
   categoryItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 6,
-    marginHorizontal: 2,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.03)",
+    flexDirection: "row", alignItems: "center", marginVertical: 6, marginHorizontal: 2,
+    paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.03)",
   },
-  categoryName: {
-    color: "#ddd",
-    fontSize: 15,
-    fontWeight: "500",
-  },
+  categoryName: { color: "#ddd", fontSize: 15, fontWeight: "500" },
   channelItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 5,
-    marginHorizontal: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.03)",
+    flexDirection: "row", alignItems: "center", marginVertical: 5, marginHorizontal: 4,
+    paddingVertical: 8, paddingHorizontal: 10, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.03)",
   },
   channelLogo: { width: 46, height: 46, borderRadius: 6, marginRight: 10 },
-  channelName: {
-    color: "#ddd",
-    fontSize: 15,
-    fontWeight: "500",
-    flexShrink: 1,
-  },
+  channelName: { color: "#ddd", fontSize: 15, fontWeight: "500", flexShrink: 1 },
 });

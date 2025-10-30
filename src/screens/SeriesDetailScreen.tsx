@@ -249,13 +249,11 @@ export default function SeriesDetailScreen() {
   // 🎞 Serien-Episoden laden
   async function loadSeriesData(seriesId: string | number) {
     try {
-      const resp = await fetch("http://87.106.10.34:8000/sessions.json");
-      const data = await resp.json();
-      const base = data.base_url;
-      const user = data.username;
-      const pass = data.password;
+      const saved = await AsyncStorage.getItem("iptv_session");
+      if (!saved) return;
+      const { serverUrl, username, password } = JSON.parse(saved);
 
-      const url = `${base}/player_api.php?username=${user}&password=${pass}&action=get_series_info&series_id=${seriesId}`;
+      const url = `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_series_info&series_id=${seriesId}`;
       console.log("📡 Lade Serieninfos von:", url);
 
       const res = await fetch(url);
@@ -267,12 +265,11 @@ export default function SeriesDetailScreen() {
       setSeasons(seasonsList);
       setAllEpisodes(episodesBySeason);
 
-      // Standard: erste Staffel vorauswählen
       if (seasonsList.length > 0) {
-        setSelectedSeason(seasonsList[0].season_number);
+          setSelectedSeason(seasonsList[0].season_number);
       }
     } catch (err) {
-      console.log("❌ Fehler beim Laden der Episoden:", err);
+        console.log("❌ Fehler beim Laden der Episoden:", err);
     }
   }
 

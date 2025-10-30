@@ -1,107 +1,88 @@
 import axios from "axios";
-import { getProxiedUrl } from "./proxyServer";
-import { getXtreamInfo } from "../store"; // ✅ NEU – Fallback auf global gespeicherte Xtream-Verbindung
-
-// 🌍 HTTPS-Proxy via ngrok – iOS sichert nur HTTPS!
-const PROXY_BASE = "https://bromic-natalie-subhemispherically.ngrok-free.dev";
-
-// 🧩 Helper: Baut URL für Proxy-Route zusammen
-function proxiedApiUrl(target: string): string {
-  if (!target) throw new Error("❌ proxiedApiUrl: target is undefined!");
-  const encoded = encodeURIComponent(target);
-  return `${PROXY_BASE}/proxy?url=${encoded}`;
-}
+import { getXtreamInfo } from "../store";
 
 export interface XtreamInfo {
   username: string;
   password: string;
-  serverUrl: string;
+  serverUrl: string; // e.g. "http://m3u.best-smarter.me:8080"
 }
 
-// 🔑 Login
-export async function loginXtream(baseUrl: string, username: string, password: string) {
-  if (!baseUrl) throw new Error("❌ Keine Base URL angegeben!");
-
-  // Basis-URL bereinigen
-  const cleanBase = baseUrl.replace(/\/player_api\.php.*$/, "").replace(/\/+$/, "");
-  const url = `${cleanBase}/player_api.php?username=${username}&password=${password}`;
-  const apiUrl = proxiedApiUrl(url);
-
-  console.log("📡 Login Xtream via:", apiUrl);
-
-  const res = await axios.get(apiUrl);
-
-  if (res.data?.user_info?.auth !== 1) throw new Error("Login fehlgeschlagen");
-
-  console.log("✅ Xtream Login erfolgreich:", res.data.user_info.username);
-
-  return {
-    username,
-    password,
-    serverUrl: cleanBase,
-  };
+function normalizeBaseUrl(input: string): string {
+  let u = input.replace(/\/player_api\.php.*$/, "").replace(/\/+$/, "");
+  u = u.replace("127.0.0.1", "m3u.best-smarter.me");
+  if (!/^https?:\/\//i.test(u)) u = "http://" + u;
+  const hasPort = /^https?:\/\/[^/]+:\d+/i.test(u);
+  if (!hasPort) u += ":8080";
+  return u;
 }
 
-// 🧩 Helper – validiert XtreamInfo
+async function xtreamGET(base: string, path: string, params?: Record<string, any>) {
+  const url = `${base}${path}`;
+  console.log("📡 XTREAM GET →", url, params ?? {});
+  const res = await axios.get(url, { params, validateStatus: () => true });
+  console.log("📡 XTREAM RES ←", res.status);
+  if (res.status !== 200) {
+    const preview =
+      typeof res.data === "string" ? res.data.slice(0, 200) : JSON.stringify(res.data).slice(0, 200);
+    throw new Error(`HTTP ${res.status} @ ${url} • Body: ${preview}`);
+  }
+  return res.data;
+}
+
 function ensureValidInfo(info: XtreamInfo) {
   if (!info?.serverUrl) throw new Error("❌ XtreamInfo.serverUrl ist undefined!");
   if (!info?.username || !info?.password) throw new Error("❌ XtreamInfo ist unvollständig!");
 }
 
-// 📺 Live-Streams
+export async function loginXtream(baseUrl: string, username: string, password: string) {
+  if (!baseUrl) throw new Error("❌ Keine Base URL angegeben!");
+  const cleanBase = normalizeBaseUrl(baseUrl);
+  const data = await xtreamGET(cleanBase, "/player_api.php", { username, password });
+  if (data?.user_info?.auth !== 1) throw new Error("Login fehlgeschlagen");
+  console.log("✅ Xtream Login erfolgreich:", data.user_info.username);
+  return { username, password, serverUrl: cleanBase };
+}
+
 export async function getLiveStreams(info?: XtreamInfo) {
-  const xtream = info || getXtreamInfo(); // ✅ Fallback auf gespeicherte Session
-  ensureValidInfo(xtream);
-  const { serverUrl, username, password } = xtream;
-  const url = `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_live_streams`;
-  const apiUrl = proxiedApiUrl(url);
-  const res = await axios.get(apiUrl);
-  return res.data;
+  const xtream = info || getXtreamInfo();
+  ensureValidInfo(xtream!);
+  return xtreamGET(xtream!.serverUrl, "/player_api.php", {
+    username: xtream!.username,
+    password: xtream!.password,
+    action: "get_live_streams",
+  });
 }
 
-// 🎬 Filme
 export async function getMovieStreams(info?: XtreamInfo) {
-  const xtream = info || getXtreamInfo(); // ✅ Fallback auf gespeicherte Session
-  ensureValidInfo(xtream);
-  const { serverUrl, username, password } = xtream;
-  const url = `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_vod_streams`;
-  const apiUrl = proxiedApiUrl(url);
-  const res = await axios.get(apiUrl);
-  return res.data;
+  const xtream = info || getXtreamInfo();
+  ensureValidInfo(xtream!);
+  return xtreamGET(xtream!.serverUrl, "/player_api.php", {
+    username: xtream!.username,
+    password: xtream!.password,
+    action: "get_vod_streams",
+  });
 }
 
-// 🎞️ Serien
 export async function getSeriesStreams(info?: XtreamInfo) {
-  const xtream = info || getXtreamInfo(); // ✅ Fallback auf gespeicherte Session
-  ensureValidInfo(xtream);
-  const { serverUrl, username, password } = xtream;
-  const url = `${serverUrl}/player_api.php?username=${username}&password=${password}&action=get_series`;
-  const apiUrl = proxiedApiUrl(url);
-  const res = await axios.get(apiUrl);
-  return res.data;
+  const xtream = info || getXtreamInfo();
+  ensureValidInfo(xtream!);
+  return xtreamGET(xtream!.serverUrl, "/player_api.php", {
+    username: xtream!.username,
+    password: xtream!.password,
+    action: "get_series",
+  });
 }
 
-// 🎥 Stream-URL über Proxy holen
 export async function buildStreamUrl(
   info: XtreamInfo,
   streamId: number,
   streamType?: string
 ): Promise<string> {
   ensureValidInfo(info);
-  const { serverUrl, username, password } = info;
-
   let typePath = "live";
   if (streamType?.toLowerCase().includes("movie")) typePath = "movie";
   else if (streamType?.toLowerCase().includes("series")) typePath = "series";
-
-  const targetUrl = `${serverUrl}/${typePath}/${username}/${password}/${streamId}.m3u8`;
-  const proxied = await getProxiedUrl(targetUrl);
-
-  if (proxied && proxied.startsWith("http")) {
-    console.log(`🎯 Stream wird über Proxy geladen: ${proxied}`);
-    return proxied;
-  } else {
-    console.warn("⚠️ Proxy ungültig, verwende Original-URL:", targetUrl);
-    return targetUrl;
-  }
+  const streamUrl = `${info.serverUrl}/${typePath}/${info.username}/${info.password}/${streamId}.m3u8`;
+  console.log(`🎯 Stream direkt (ohne Proxy): ${streamUrl}`);
+  return streamUrl;
 }

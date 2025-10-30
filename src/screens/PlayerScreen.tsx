@@ -12,7 +12,7 @@ import {
   Easing,
   ViewStyle,
 } from "react-native";
-import { Video, Audio } from "expo-av";
+import { VideoView } from "expo-video";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
@@ -29,7 +29,7 @@ export default function PlayerScreen({ route, navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const videoRef = useRef<Video>(null);
+  const videoRef = useRef<VideoView>(null);
   const progress = useRef(new Animated.Value(0)).current;
   const { width: SW, height: SH } = Dimensions.get("window");
 
@@ -53,23 +53,6 @@ export default function PlayerScreen({ route, navigation }: any) {
     })();
   }, []);
 
-  useFocusEffect(
-    React.useCallback(() => {
-      (async () => {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          staysActiveInBackground: false,
-          playsInSilentModeIOS: true,
-          shouldDuckAndroid: false,
-        });
-        await Audio.setIsEnabledAsync(true);
-      })();
-      return () => {
-        if (videoRef.current) videoRef.current.unloadAsync().catch(() => {});
-        Audio.setIsEnabledAsync(false).catch(() => {});
-      };
-    }, [])
-  );
 
   // 📺 Beim Öffnen sofort Landscape aktivieren
   useEffect(() => {
@@ -104,6 +87,16 @@ export default function PlayerScreen({ route, navigation }: any) {
 
   // 🧠 smarter Stream-Start mit alternativen Fallbacks
   const startStream = async (retryVariant = 0) => {
+    // 🧹 Alten Player ausblenden & entladen
+    if (videoRef.current) {
+      try {
+        await videoRef.current.pauseAsync?.();
+        await videoRef.current.unloadAsync?.();
+      } catch (e) {
+        console.log("⚠️ alter Player konnte nicht entladen werden:", e);
+      }
+    }
+    setCurrentUrl(null); // <— Entfernt alten Player vor neuem Stream
     try {
       setLoading(true);
       const ch = currentChannel;
@@ -125,24 +118,6 @@ export default function PlayerScreen({ route, navigation }: any) {
 
       setCurrentUrl(streamUrl);
       setErrorMsg(null);
-
-      if (videoRef.current) {
-        await videoRef.current.unloadAsync().catch(() => {});
-        await videoRef.current.loadAsync(
-          {
-            uri: streamUrl,
-            headers: {
-              "User-Agent": "ExoPlayerLib/2.15.1 (Linux;Android 11)",
-              "Referer": streamUrl.split("/live/")[0] + "/",
-              "Origin": streamUrl.split("/live/")[0],
-              "Accept": "*/*",
-              "Connection": "keep-alive",
-            },
-          },
-          { shouldPlay: true, isMuted: false }
-        );
-      }
-
       setIsPlaying(true);
 
       const historyRaw = await AsyncStorage.getItem("stream_history");
@@ -165,17 +140,18 @@ export default function PlayerScreen({ route, navigation }: any) {
 
   const handleBack = async () => {
     try {
-      if (videoRef.current) await videoRef.current.unloadAsync();
-      await Audio.setIsEnabledAsync(false);
+      setIsPlaying(false);
       await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-      navigation.navigate("MainTabs", { screen: "Live" });
+      navigation.goBack();
     } catch (err) {
       console.log("⚠️ Fehler beim Zurücknavigieren:", err);
     }
   };
 
   const enterFullscreen = () => {
+    //setCurrentUrl(null); // ⬅️ alter Player vollständig entfernen
     setIsFullscreen(true);
+    setShowControls(true);
     Animated.timing(progress, {
       toValue: 1,
       duration: 400,
@@ -196,16 +172,8 @@ export default function PlayerScreen({ route, navigation }: any) {
     });
   };
 
-  const togglePlayPause = async () => {
-    if (!videoRef.current) return;
-    const s = await videoRef.current.getStatusAsync();
-    if (s.isPlaying) {
-      await videoRef.current.pauseAsync();
-      setIsPlaying(false);
-    } else {
-      await videoRef.current.playAsync();
-      setIsPlaying(true);
-    }
+  const togglePlayPause = () => {
+    setIsPlaying((prev) => !prev);
   };
 
   const handleNextChannel = () => {
@@ -214,7 +182,24 @@ export default function PlayerScreen({ route, navigation }: any) {
     }
   };
 
-  const handleVideoPress = () => setShowControls((p) => !p);
+  // Auto-hide fullscreen controls after 3 seconds
+  useEffect(() => {
+    if (showControls && isFullscreen) {
+      const timeout = setTimeout(() => {
+        setShowControls(false);
+      }, 3000);
+      return () => clearTimeout(timeout);
+    }
+  }, [showControls, isFullscreen]);
+
+  const handleVideoPress = () => {
+    if (isFullscreen && !showControls) {
+      // If in fullscreen and controls are hidden, tap exits fullscreen
+      exitFullscreen();
+    } else {
+      setShowControls((p) => !p);
+    }
+  };
 
   const videoStyle = {
     position: "absolute",
@@ -235,112 +220,133 @@ export default function PlayerScreen({ route, navigation }: any) {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.splitContainer}>
-        <View style={styles.leftPane}>
-          <FlatList
-            data={channels}
-            keyExtractor={(_, i) => i.toString()}
-            renderItem={({ item, index }) => (
-              <TouchableOpacity
-                style={[
-                  styles.channelItem,
-                  index === selectedIndex && styles.channelItemSelected,
-                ]}
-                onPress={() => setSelectedIndex(index)}
-                activeOpacity={0.8}
-              >
-                <Image
-                  source={{
-                    uri: item.stream_icon || "https://via.placeholder.com/60x60",
-                  }}
-                  style={styles.channelLogo}
-                />
-                <Text
+      {!isFullscreen && (
+        <View style={styles.splitContainer}>
+          <View style={styles.leftPane}>
+            <FlatList
+              data={channels}
+              keyExtractor={(_, i) => i.toString()}
+              renderItem={({ item, index }) => (
+                <TouchableOpacity
                   style={[
-                    styles.channelName,
-                    index === selectedIndex && { color: "#fff" },
+                    styles.channelItem,
+                    index === selectedIndex && styles.channelItemSelected,
                   ]}
+                  onPress={() => setSelectedIndex(index)}
+                  activeOpacity={0.8}
                 >
-                  {item.name}
-                </Text>
-              </TouchableOpacity>
-            )}
-          />
-        </View>
+                  <Image
+                    source={{
+                      uri: item.stream_icon || "https://via.placeholder.com/60x60",
+                    }}
+                    style={styles.channelLogo}
+                  />
+                  <Text
+                    style={[
+                      styles.channelName,
+                      index === selectedIndex && { color: "#fff" },
+                    ]}
+                  >
+                    {item.name}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
 
-        <View style={styles.rightPane}>
-          {loading ? (
-            <View style={[styles.center, { flex: 1 }]}>
-              <ActivityIndicator color="#ff5722" size="large" />
-              <Text style={{ color: "#fff", marginTop: 10 }}>Lade Stream...</Text>
-            </View>
-          ) : errorMsg ? (
-            <Text style={{ color: "red" }}>{errorMsg}</Text>
-          ) : null}
+          <View style={styles.rightPane}>
+            {loading ? (
+              <View style={[styles.center, { flex: 1 }]}>
+                <ActivityIndicator color="#ff5722" size="large" />
+                <Text style={{ color: "#fff", marginTop: 10 }}>Lade Stream...</Text>
+              </View>
+            ) : errorMsg ? (
+              <Text style={{ color: "red" }}>{errorMsg}</Text>
+            ) : null}
+          </View>
         </View>
-      </View>
+      )}
 
       {currentUrl && (
-        <Animated.View style={videoStyle}>
-          <TouchableOpacity
-            activeOpacity={1}
-            style={StyleSheet.absoluteFill}
-            onPress={isFullscreen ? handleVideoPress : enterFullscreen}
-          >
-            <Video
-              ref={videoRef}
-              source={{
-                uri: currentUrl,
-                overrideFileExtensionAndroid: "m3u8",
-                headers: {
-                  "User-Agent": "ExoPlayerLib/2.15.1 (Linux;Android 11)",
-                  "Referer": currentUrl.split("/live/")[0] + "/",
-                  "Origin": currentUrl.split("/live/")[0],
-                },
-              }}
+        !isFullscreen ? (
+          <Animated.View style={videoStyle}>
+            <TouchableOpacity
+              activeOpacity={1}
               style={StyleSheet.absoluteFill}
-              shouldPlay={isPlaying}
-              resizeMode="contain"
-              useNativeControls={false}
-              onError={async (error) => {
-                console.log("❌ Video-Fehler:", error);
-                if (error?.error?.code === -1008 || error?.error?.code === -1002) {
-                  console.log("🔁 iOS-Fehler erkannt – versuche alternative Endung...");
-                  await startStream(1);
-                }
-              }}
-            />
-          </TouchableOpacity>
+              onPress={enterFullscreen}
+            >
+              <VideoView
+                ref={videoRef}
+                source={{
+                  uri: currentUrl,
+                  overrideFileExtensionAndroid: "m3u8",
+                  contentType: "application/vnd.apple.mpegurl",
+                  headers: {
+                    "User-Agent": "ExoPlayerLib/2.15.1 (Linux;Android 11)",
+                    "Referer": currentUrl.split("/live/")[0] + "/",
+                    "Origin": currentUrl.split("/live/")[0],
+                  },
+                }}
+                style={StyleSheet.absoluteFill}
+                shouldPlay={isPlaying}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          </Animated.View>
+        ) : (
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: "#000", zIndex: 99 }]}>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFill}
+              activeOpacity={1}
+              onPress={handleVideoPress}
+            >
+              <VideoView
+                ref={videoRef}
+                source={{
+                  uri: currentUrl,
+                  overrideFileExtensionAndroid: "m3u8",
+                  headers: {
+                    "User-Agent": "ExoPlayerLib/2.15.1 (Linux;Android 11)",
+                    "Referer": currentUrl.split("/live/")[0] + "/",
+                    "Origin": currentUrl.split("/live/")[0],
+                  },
+                }}
+                style={StyleSheet.absoluteFill}
+                shouldPlay={isPlaying}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
 
-          {isFullscreen && showControls && (
-            <View style={styles.overlay}>
-              <TouchableOpacity
-                style={styles.backOverlayButton}
-                onPress={exitFullscreen}
-              >
-                <Ionicons name="arrow-back" size={22} color="#fff" />
-              </TouchableOpacity>
-
-              <View style={styles.controlsRow}>
-                <TouchableOpacity onPress={togglePlayPause}>
-                  <Ionicons
-                    name={isPlaying ? "pause-circle" : "play-circle"}
-                    size={76}
-                    color="#fff"
-                  />
+            {showControls && (
+              <View style={styles.overlay}>
+                <TouchableOpacity
+                  style={styles.backOverlayButton}
+                  onPress={exitFullscreen}
+                >
+                  <Ionicons name="arrow-back" size={22} color="#fff" />
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={handleNextChannel}>
-                  <Ionicons
-                    name="play-skip-forward-circle"
-                    size={66}
-                    color="#fff"
-                  />
-                </TouchableOpacity>
+                <View style={styles.controlsRow}>
+                  <TouchableOpacity onPress={togglePlayPause}>
+                    <Ionicons
+                      name={isPlaying ? "pause-circle" : "play-circle"}
+                      size={76}
+                      color="#fff"
+                    />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity onPress={handleNextChannel}>
+                    <Ionicons
+                      name="play-skip-forward-circle"
+                      size={66}
+                      color="#fff"
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          )}
-        </Animated.View>
+            )}
+          </View>
+        )
       )}
     </View>
   );
