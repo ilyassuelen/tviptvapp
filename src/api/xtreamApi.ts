@@ -86,7 +86,7 @@ export async function buildStreamUrl(info: XtreamInfo, streamId: number, streamT
   }
 
   if (streamType?.toLowerCase().includes("series") || streamType?.toLowerCase().includes("episode")) {
-    return `${base}/series/${info.username}/${info.password}/${streamId}.mp4`;
+    return `${base}/series/${info.username}/${info.password}/${streamId}.mkv`;
   }
 
   return null as any;

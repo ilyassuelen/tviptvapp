@@ -582,7 +582,13 @@ export default function SeriesDetailScreen() {
                           }}
                           onPress={() =>
                             navigation.navigate("Player", {
-                              channels: [{ name: ep.title, stream_id: ep.id }],
+                              channels: [
+                                {
+                                  name: ep.title,
+                                  stream_id: ep.episode_id || ep.id,
+                                  stream_type: "series",
+                                },
+                              ],
                               currentIndex: 0,
                             })
                           }

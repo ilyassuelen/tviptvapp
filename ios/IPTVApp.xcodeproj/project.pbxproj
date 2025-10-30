@@ -7,29 +7,29 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		039760D3157AAD6B26754C9E /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = FF3D5EABC7183BDCA7A1F3CA /* PrivacyInfo.xcprivacy */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		311D888B862D6FEE647B8E91 /* libPods-IPTVApp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 73ECA81EE0A12CFBF49A6251 /* libPods-IPTVApp.a */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		473E370067A425BB1B3C7978 /* libPods-IPTVApp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8178C3A497E7D90DCF798FCC /* libPods-IPTVApp.a */; };
-		7AB68953E87DDBFA628525BD /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBC488E2BE839FF92559CB5E /* ExpoModulesProvider.swift */; };
+		97AE481AA3EFEF831AA02764 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74FF999EDF4590E728E633FD /* ExpoModulesProvider.swift */; };
+		991312F211F1E3C906C0BA73 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 624DCB26F6F0D34D1C8C9C4F /* PrivacyInfo.xcprivacy */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0ACC85E57611D7D0B57403CE /* Pods-IPTVApp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IPTVApp.release.xcconfig"; path = "Target Support Files/Pods-IPTVApp/Pods-IPTVApp.release.xcconfig"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* IPTVApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = IPTVApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = IPTVApp/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = IPTVApp/Info.plist; sourceTree = "<group>"; };
-		193763EF6503BE06E2E70311 /* Pods-IPTVApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IPTVApp.debug.xcconfig"; path = "Target Support Files/Pods-IPTVApp/Pods-IPTVApp.debug.xcconfig"; sourceTree = "<group>"; };
-		53356A1A6D0554B198FFD159 /* Pods-IPTVApp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IPTVApp.release.xcconfig"; path = "Target Support Files/Pods-IPTVApp/Pods-IPTVApp.release.xcconfig"; sourceTree = "<group>"; };
-		8178C3A497E7D90DCF798FCC /* libPods-IPTVApp.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-IPTVApp.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		624DCB26F6F0D34D1C8C9C4F /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = IPTVApp/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		73ECA81EE0A12CFBF49A6251 /* libPods-IPTVApp.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-IPTVApp.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		74FF999EDF4590E728E633FD /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-IPTVApp/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = IPTVApp/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		EBC488E2BE839FF92559CB5E /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-IPTVApp/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = IPTVApp/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* IPTVApp-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "IPTVApp-Bridging-Header.h"; path = "IPTVApp/IPTVApp-Bridging-Header.h"; sourceTree = "<group>"; };
-		FF3D5EABC7183BDCA7A1F3CA /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = IPTVApp/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		FCD5F10730844D2F420AA3C5 /* Pods-IPTVApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-IPTVApp.debug.xcconfig"; path = "Target Support Files/Pods-IPTVApp/Pods-IPTVApp.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -37,7 +37,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				473E370067A425BB1B3C7978 /* libPods-IPTVApp.a in Frameworks */,
+				311D888B862D6FEE647B8E91 /* libPods-IPTVApp.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -53,7 +53,7 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				FF3D5EABC7183BDCA7A1F3CA /* PrivacyInfo.xcprivacy */,
+				624DCB26F6F0D34D1C8C9C4F /* PrivacyInfo.xcprivacy */,
 			);
 			name = IPTVApp;
 			sourceTree = "<group>";
@@ -62,27 +62,9 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				8178C3A497E7D90DCF798FCC /* libPods-IPTVApp.a */,
+				73ECA81EE0A12CFBF49A6251 /* libPods-IPTVApp.a */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		3AC43E384241C9E9415D28AF /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				C09D73159443BB66507BFC65 /* IPTVApp */,
-			);
-			name = ExpoModulesProviders;
-			sourceTree = "<group>";
-		};
-		5EF39D7C5AB5D9F4AD72F52A /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				193763EF6503BE06E2E70311 /* Pods-IPTVApp.debug.xcconfig */,
-				53356A1A6D0554B198FFD159 /* Pods-IPTVApp.release.xcconfig */,
-			);
-			name = Pods;
-			path = Pods;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -99,8 +81,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				5EF39D7C5AB5D9F4AD72F52A /* Pods */,
-				3AC43E384241C9E9415D28AF /* ExpoModulesProviders */,
+				EF98AED58756C6E725BD88C9 /* Pods */,
+				F1F487D78DB31F1CE23651F8 /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -124,12 +106,29 @@
 			path = IPTVApp/Supporting;
 			sourceTree = "<group>";
 		};
-		C09D73159443BB66507BFC65 /* IPTVApp */ = {
+		DC05C4D46549AFE0C8545E41 /* IPTVApp */ = {
 			isa = PBXGroup;
 			children = (
-				EBC488E2BE839FF92559CB5E /* ExpoModulesProvider.swift */,
+				74FF999EDF4590E728E633FD /* ExpoModulesProvider.swift */,
 			);
 			name = IPTVApp;
+			sourceTree = "<group>";
+		};
+		EF98AED58756C6E725BD88C9 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				FCD5F10730844D2F420AA3C5 /* Pods-IPTVApp.debug.xcconfig */,
+				0ACC85E57611D7D0B57403CE /* Pods-IPTVApp.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
+		F1F487D78DB31F1CE23651F8 /* ExpoModulesProviders */ = {
+			isa = PBXGroup;
+			children = (
+				DC05C4D46549AFE0C8545E41 /* IPTVApp */,
+			);
+			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -140,13 +139,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "IPTVApp" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				9075C9B7953E351F71D9726C /* [Expo] Configure project */,
+				4AA381D879031C7693E8B9AE /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				62C549B55354C7CA7862BCA1 /* [CP] Embed Pods Frameworks */,
+				8B6BBA7A762D9ED25ADF42C8 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -196,7 +195,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				039760D3157AAD6B26754C9E /* PrivacyInfo.xcprivacy in Resources */,
+				991312F211F1E3C906C0BA73 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -242,29 +241,29 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		62C549B55354C7CA7862BCA1 /* [CP] Embed Pods Frameworks */ = {
+		4AA381D879031C7693E8B9AE /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-IPTVApp/Pods-IPTVApp-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/MobileVLCKit/MobileVLCKit.framework/MobileVLCKit",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			inputFileListPaths = (
 			);
-			name = "[CP] Embed Pods Frameworks";
+			inputPaths = (
+				"$(SRCROOT)/.xcode.env",
+				"$(SRCROOT)/.xcode.env.local",
+				"$(SRCROOT)/IPTVApp/IPTVApp.entitlements",
+				"$(SRCROOT)/Pods/Target Support Files/Pods-IPTVApp/expo-configure-project.sh",
+			);
+			name = "[Expo] Configure project";
+			outputFileListPaths = (
+			);
 			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MobileVLCKit.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/React.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReactNativeDependencies.framework",
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+				"$(SRCROOT)/Pods/Target Support Files/Pods-IPTVApp/ExpoModulesProvider.swift",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-IPTVApp/Pods-IPTVApp-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
+			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-IPTVApp/expo-configure-project.sh\"\n";
 		};
 		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -326,29 +325,29 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-IPTVApp/Pods-IPTVApp-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		9075C9B7953E351F71D9726C /* [Expo] Configure project */ = {
+		8B6BBA7A762D9ED25ADF42C8 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
-			inputFileListPaths = (
-			);
 			inputPaths = (
-				"$(SRCROOT)/.xcode.env",
-				"$(SRCROOT)/.xcode.env.local",
-				"$(SRCROOT)/IPTVApp/IPTVApp.entitlements",
-				"$(SRCROOT)/Pods/Target Support Files/Pods-IPTVApp/expo-configure-project.sh",
+				"${PODS_ROOT}/Target Support Files/Pods-IPTVApp/Pods-IPTVApp-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/MobileVLCKit/MobileVLCKit.framework/MobileVLCKit",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/React-Core-prebuilt/React.framework/React",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/ReactNativeDependencies/ReactNativeDependencies.framework/ReactNativeDependencies",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
 			);
-			name = "[Expo] Configure project";
-			outputFileListPaths = (
-			);
+			name = "[CP] Embed Pods Frameworks";
 			outputPaths = (
-				"$(SRCROOT)/Pods/Target Support Files/Pods-IPTVApp/ExpoModulesProvider.swift",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/MobileVLCKit.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/React.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/ReactNativeDependencies.framework",
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-IPTVApp/expo-configure-project.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-IPTVApp/Pods-IPTVApp-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -358,7 +357,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				7AB68953E87DDBFA628525BD /* ExpoModulesProvider.swift in Sources */,
+				97AE481AA3EFEF831AA02764 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -367,12 +366,13 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 193763EF6503BE06E2E70311 /* Pods-IPTVApp.debug.xcconfig */;
+			baseConfigurationReference = FCD5F10730844D2F420AA3C5 /* Pods-IPTVApp.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = IPTVApp/IPTVApp.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = W34S8K6898;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
@@ -403,12 +403,13 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 53356A1A6D0554B198FFD159 /* Pods-IPTVApp.release.xcconfig */;
+			baseConfigurationReference = 0ACC85E57611D7D0B57403CE /* Pods-IPTVApp.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = IPTVApp/IPTVApp.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = W34S8K6898;
 				INFOPLIST_FILE = IPTVApp/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (

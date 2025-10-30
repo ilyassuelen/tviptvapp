@@ -85,7 +85,7 @@ export default function PlayerScreen({ route, navigation }: any) {
     }
   }, [session]);
 
-  // 🧠 smarter Stream-Start mit alternativen Fallbacks
+  // 🧠 smarter Stream-Start mit alternativen Fallbacks (.mkv für Filme bevorzugen)
   const startStream = async (retryVariant = 0) => {
     setCurrentUrl(null);
     setLoading(true);
@@ -99,11 +99,25 @@ export default function PlayerScreen({ route, navigation }: any) {
         return;
       }
 
-      // 🎯 Basierend auf Typ Stream-URL erstellen
+      // 🎯 URL basierend auf Stream-Typ erzeugen
       let streamUrl = await buildStreamUrl(session, ch.stream_id, ch.stream_type);
 
-      // 🔁 Smarter Fallback falls 1. Versuch fehlschlägt
-      const variants = [streamUrl, streamUrl.replace(".m3u8", ".mp4"), streamUrl.replace(".mp4", ".ts")];
+      // 📁 Dateiformate pro Kategorie
+      let extensions = [".m3u8", ".mp4", ".mkv", ".ts"];
+      if (
+        ch.stream_type?.toLowerCase().includes("movie") ||
+        ch.stream_type?.toLowerCase().includes("vod") ||
+        ch.stream_type?.toLowerCase().includes("series")
+      ) {
+        // Für Filme und Serien sofort .mkv bevorzugen
+        extensions = [".mkv", ".mp4", ".ts", ".m3u8"];
+      }
+
+      // 🔁 Varianten generieren
+      const variants = extensions.map(ext =>
+        streamUrl.replace(/\.(m3u8|mp4|mkv|ts)$/, ext)
+      );
+
       const tryUrl = variants[retryVariant] || variants[0];
 
       console.log(`🎬 Lade Stream (Versuch ${retryVariant + 1}): ${tryUrl}`);
