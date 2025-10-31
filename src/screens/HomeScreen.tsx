@@ -25,6 +25,7 @@ export default function HomeScreen() {
   const [availableLangs, setAvailableLangs] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [history, setHistory] = useState<any[]>([]); // ⬅️ NEU
+  const [latestMovie, setLatestMovie] = useState<any | null>(null); // ⬅️ NEW
 
   const navigation = useNavigation<any>();
   const spinAnim = useRef(new Animated.Value(0)).current;
@@ -70,6 +71,12 @@ export default function HomeScreen() {
         if (parsed.date === today && parsed.lang === lang && afterMidnight) {
           setMovies(parsed.movies);
           setSeries(parsed.series);
+          // Set latestMovie from stored movies if possible
+          if (parsed.movies && parsed.movies.length > 0) {
+            setLatestMovie(parsed.movies[0]);
+          } else {
+            setLatestMovie(null);
+          }
           setLoading(false);
           return;
         }
@@ -163,6 +170,19 @@ export default function HomeScreen() {
         const year = extractYearFromTitle(s.name || s.title || "");
         return year ? year >= 2005 : true;
       });
+
+      // Sort by 'added' or 'added_date' descending
+      filteredMovies.sort((a, b) => {
+        const aDate = parseInt(a.added || a.added_date || 0);
+        const bDate = parseInt(b.added || b.added_date || 0);
+        return bDate - aDate;
+      });
+      // Set latestMovie to first after sorting
+      if (filteredMovies.length > 0) {
+        setLatestMovie(filteredMovies[0]);
+      } else {
+        setLatestMovie(null);
+      }
 
       // Nur echte Poster verwenden (nach dem Zufall erneut prüfen)
       const validMovies = filteredMovies.filter(m => hasPoster(m));
@@ -349,6 +369,63 @@ export default function HomeScreen() {
 
       {/* INHALT */}
       <ScrollView style={{ flex: 1, paddingHorizontal: 10, backgroundColor: "#000" }}>
+        {/* 🎬 HERO BANNER (latestMovie) */}
+        {latestMovie && (
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate("MovieDetail", { movie: latestMovie })}
+            style={{ marginBottom: 25 }}
+          >
+            <Image
+              source={{
+                uri:
+                  latestMovie.stream_icon ||
+                  latestMovie.cover ||
+                  latestMovie.movie_image,
+              }}
+              style={{ width: "100%", height: 220, borderRadius: 10 }}
+              resizeMode="cover"
+            />
+            <View
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                padding: 16,
+                backgroundColor: "rgba(0,0,0,0.4)",
+                borderBottomLeftRadius: 10,
+                borderBottomRightRadius: 10,
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
+                <Ionicons name="flame-outline" size={16} color="#fff" style={{ marginRight: 6, opacity: 0.9 }} />
+                <Text style={{ color: "#fff", fontSize: 13, opacity: 0.9, fontWeight: "600" }}>
+                  Neu hinzugefügt
+                </Text>
+              </View>
+              <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}>
+                {cleanTitle(latestMovie.name || latestMovie.title || "")}
+              </Text>
+              <TouchableOpacity
+                style={{
+                  marginTop: 10,
+                  backgroundColor: "#fff",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  borderRadius: 30,
+                  paddingVertical: 8,
+                  paddingHorizontal: 20,
+                  alignSelf: "flex-start",
+                }}
+                onPress={() => navigation.navigate("MovieDetail", { movie: latestMovie })}
+              >
+                <Ionicons name="play" size={18} color="#000" style={{ marginRight: 6 }} />
+                <Text style={{ color: "#000", fontWeight: "700" }}>Jetzt ansehen</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        )}
         <Text style={styles.sectionTitle}>
           Film Empfehlungen ({languageLabels[language] || language})
         </Text>
@@ -506,4 +583,56 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   historyText: { color: "#ccc", fontSize: 12, textAlign: "center", width: 80 },
+
+  // 🎬 HERO BANNER STYLES
+  heroContainer: {
+    position: "relative",
+    width: "100%",
+    height: 250,
+    marginBottom: 25,
+    borderRadius: 10,
+    overflow: "hidden",
+  },
+  heroImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 10,
+  },
+  heroOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  heroTextContainer: {
+    position: "absolute",
+    bottom: 20,
+    left: 20,
+    right: 20,
+  },
+  heroTitle: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "800",
+    marginBottom: 12,
+    textShadowColor: "rgba(0,0,0,0.8)",
+    textShadowRadius: 6,
+    textShadowOffset: { width: 2, height: 2 },
+  },
+  heroButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "#fff",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 30,
+  },
+  heroButtonText: {
+    color: "#000",
+    fontWeight: "700",
+    fontSize: 15,
+  },
 });
