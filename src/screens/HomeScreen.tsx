@@ -308,6 +308,17 @@ export default function HomeScreen() {
       item.series_image ||
       item.poster;
 
+    // 📊 Rating berechnen (robust)
+    let displayRating = null;
+    if (item.rating !== undefined && item.rating !== null && item.rating !== "") {
+      displayRating = parseFloat(item.rating);
+    } else if (item.rating_5based !== undefined && item.rating_5based !== null) {
+      displayRating = parseFloat(item.rating_5based) * 2;
+    }
+    if (isNaN(displayRating)) {
+      displayRating = null;
+    }
+
     // ❌ Kein gültiges Poster? -> Überspringen
     if (
       !img ||
@@ -341,6 +352,24 @@ export default function HomeScreen() {
           style={styles.posterContainer}
         >
           <Image source={{ uri: img }} style={styles.posterImage} resizeMode="cover" />
+          {/* Rating-Badge NEU */}
+          {displayRating !== null && (
+            <View
+              style={{
+                position: "absolute",
+                top: 6,
+                right: 6,
+                backgroundColor: "rgba(0,0,0,0.7)",
+                borderRadius: 6,
+                paddingVertical: 2,
+                paddingHorizontal: 5,
+              }}
+            >
+              <Text style={{ color: "gold", fontSize: 12 }}>
+                ⭐ {displayRating.toFixed(1)}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
         <Text style={styles.posterTitle} numberOfLines={1}>
           {title}
@@ -656,6 +685,25 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   historyText: { color: "#ccc", fontSize: 12, textAlign: "center", width: 80 },
+
+  // ⭐ Rating-Badge
+  ratingBadge: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 2,
+    paddingHorizontal: 5,
+    borderRadius: 6,
+  },
+  ratingText: {
+    color: "#FFD700",
+    fontSize: 12,
+    fontWeight: "600",
+    marginLeft: 3,
+  },
 
   // 🎬 HERO BANNER STYLES
   heroContainer: {

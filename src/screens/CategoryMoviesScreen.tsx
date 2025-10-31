@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View, Text, Image, FlatList, TouchableOpacity,
   Platform, Dimensions
@@ -26,10 +26,43 @@ export default function CategoryMoviesScreen() {
 
   const placeholder = "https://via.placeholder.com/150x200.png?text=Kein+Bild";
 
+  const [sorted, setSorted] = useState(false);
+  const [displayedMovies, setDisplayedMovies] = useState(movies || []);
+
+  const handleSort = () => {
+    if (sorted) {
+      // Ursprüngliche Reihenfolge wiederherstellen
+      setDisplayedMovies(movies);
+      setSorted(false);
+    } else {
+      // Nach bester Bewertung sortieren
+      const sortedMovies = [...displayedMovies].sort((a, b) => {
+        const ratingA = parseFloat(a.rating || a.rating_5based * 2 || 0);
+        const ratingB = parseFloat(b.rating || b.rating_5based * 2 || 0);
+        return ratingB - ratingA;
+      });
+      setDisplayedMovies(sortedMovies);
+      setSorted(true);
+    }
+  };
+
   const renderItem = ({ item }: { item: any }) => {
     const poster = item.stream_icon || item.movie_image || item.poster || placeholder;
     const rawTitle = item.name || item.title || item.stream_display_name || "Unbekannt";
     const title = cleanTitle(rawTitle);
+
+    // Rating-Berechnung einfügen
+    let displayRating = null;
+
+    if (item.rating !== undefined && item.rating !== null && item.rating !== "") {
+      displayRating = parseFloat(item.rating);
+    } else if (item.rating_5based !== undefined && item.rating_5based !== null) {
+      displayRating = parseFloat(item.rating_5based) * 2;
+    }
+
+    if (isNaN(displayRating)) {
+      displayRating = null;
+    }
 
     return (
       <View style={{ flex: 1 / 3, alignItems: "center", marginVertical: 8 }}>
@@ -46,6 +79,25 @@ export default function CategoryMoviesScreen() {
               backgroundColor: "#111",
             }}
           >
+            {/* Bewertungs-View direkt über dem Posterbild */}
+            {displayRating !== null && (
+              <View
+                style={{
+                  position: "absolute",
+                  top: 6,
+                  right: 6,
+                  backgroundColor: "rgba(0,0,0,0.7)",
+                  borderRadius: 6,
+                  paddingVertical: 2,
+                  paddingHorizontal: 5,
+                  zIndex: 10,
+                }}
+              >
+                <Text style={{ color: "gold", fontSize: 12 }}>
+                  ⭐ {displayRating ? displayRating.toFixed(1) : "-"}
+                </Text>
+              </View>
+            )}
             <Image source={{ uri: poster }} style={{ width: "100%", height: "100%" }} />
           </View>
           <Text
@@ -88,8 +140,24 @@ export default function CategoryMoviesScreen() {
         </Text>
       </View>
 
+      <TouchableOpacity
+        onPress={handleSort}
+        style={{
+          backgroundColor: "#222",
+          paddingVertical: 10,
+          paddingHorizontal: 20,
+          borderRadius: 8,
+          alignSelf: "center",
+          marginBottom: 10,
+        }}
+      >
+        <Text style={{ color: "white", fontSize: 14 }}>
+          {sorted ? "Zurück zur ursprünglichen Reihenfolge" : "Sortieren nach Bewertung"}
+        </Text>
+      </TouchableOpacity>
+
       <FlatList
-        data={movies}
+        data={displayedMovies}
         numColumns={3}
         keyExtractor={(_, i) => i.toString()}
         renderItem={renderItem}

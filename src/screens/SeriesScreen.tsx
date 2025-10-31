@@ -157,6 +157,17 @@ export default function SeriesScreen() {
     const posterUri = serie.cover || serie.stream_icon || serie.series_image || serie.poster || placeholderImage;
     const title = cleanTitle(serie.name || serie.title || serie.stream_display_name || "Unbekannt");
 
+    // ⭐️ Rating-Badge Logik
+    let displayRating = null;
+    if (serie.rating !== undefined && serie.rating !== null && serie.rating !== "") {
+      displayRating = parseFloat(serie.rating);
+    } else if (serie.rating_5based !== undefined && serie.rating_5based !== null) {
+      displayRating = parseFloat(serie.rating_5based) * 2;
+    }
+    if (isNaN(displayRating)) {
+      displayRating = null;
+    }
+
     return (
       <TouchableOpacity
         key={index}
@@ -166,6 +177,25 @@ export default function SeriesScreen() {
         }}
         onPress={() => navigation.navigate("SeriesDetail", { serie })}
       >
+        {/* Rating-Badge */}
+        {displayRating !== null && (
+          <View
+            style={{
+              position: "absolute",
+              top: 6,
+              right: 6,
+              backgroundColor: "rgba(0,0,0,0.7)",
+              borderRadius: 6,
+              paddingVertical: 2,
+              paddingHorizontal: 5,
+              zIndex: 10,
+            }}
+          >
+            <Text style={{ color: "gold", fontSize: 12 }}>
+              ⭐ {displayRating ? displayRating.toFixed(1) : "-"}
+            </Text>
+          </View>
+        )}
         <Image
           source={{ uri: posterUri }}
           style={{ width: "100%", height: 180, borderTopLeftRadius: 8, borderTopRightRadius: 8 }}

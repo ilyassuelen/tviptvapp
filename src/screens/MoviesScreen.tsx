@@ -203,6 +203,17 @@ export default function MoviesScreen() {
       movie.name || movie.title || movie.stream_display_name || "Unbekannt"
     );
 
+    // Rating-Badge-Logik
+    let displayRating = null;
+    if (movie.rating !== undefined && movie.rating !== null && movie.rating !== "") {
+      displayRating = parseFloat(movie.rating);
+    } else if (movie.rating_5based !== undefined && movie.rating_5based !== null) {
+      displayRating = parseFloat(movie.rating_5based) * 2;
+    }
+    if (isNaN(displayRating)) {
+      displayRating = null;
+    }
+
     return (
       <TouchableOpacity
         key={index}
@@ -215,6 +226,25 @@ export default function MoviesScreen() {
         }}
         onPress={() => navigation.navigate("MovieDetail", { movie })}
       >
+        {/* Rating-Badge */}
+        {displayRating !== null && (
+          <View
+            style={{
+              position: "absolute",
+              top: 6,
+              right: 6,
+              backgroundColor: "rgba(0,0,0,0.7)",
+              borderRadius: 6,
+              paddingVertical: 2,
+              paddingHorizontal: 5,
+              zIndex: 10,
+            }}
+          >
+            <Text style={{ color: "gold", fontSize: 12 }}>
+              ⭐ {displayRating ? displayRating.toFixed(1) : "-"}
+            </Text>
+          </View>
+        )}
         <Image
           source={{ uri: posterUri }}
           style={{

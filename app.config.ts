@@ -15,25 +15,19 @@ const config: ExpoConfig = {
 
   ios: {
     supportsTablet: true,
-
-    // ➕ Erlaubt beide Orientierungen vollständig
-    orientations: ["portrait", "landscape-right", "landscape-left"],
-
     bundleIdentifier: "com.ilyassulen.iptvapp",
-
+    orientations: ["portrait", "landscape-right", "landscape-left"],
     infoPlist: {
-      UISupportedInterfaceOrientations: [
-        "UIInterfaceOrientationPortrait",
-        "UIInterfaceOrientationLandscapeLeft",
-        "UIInterfaceOrientationLandscapeRight",
-      ],
-
-      // 🔓 erlaubt unsichere HTTP-Verbindungen
       NSAppTransportSecurity: {
         NSAllowsArbitraryLoads: true,
         NSAllowsLocalNetworking: true,
         NSExceptionDomains: {
           "m3u.best-smarter.me": {
+            NSIncludesSubdomains: true,
+            NSTemporaryExceptionAllowsInsecureHTTPLoads: true,
+            NSTemporaryExceptionMinimumTLSVersion: "TLSv1.0",
+          },
+          "line.crystalott.net": {
             NSIncludesSubdomains: true,
             NSTemporaryExceptionAllowsInsecureHTTPLoads: true,
             NSTemporaryExceptionMinimumTLSVersion: "TLSv1.0",

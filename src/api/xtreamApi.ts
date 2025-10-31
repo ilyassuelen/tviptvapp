@@ -1,93 +1,84 @@
-import axios from "axios";
-import { getXtreamInfo } from "../store";
 
-export interface XtreamInfo {
+import axios from "axios";
+
+// 🧹 Hilfsfunktion: Bereinigt Server-URL (entfernt doppelte Ports und Slashes)
+function cleanServerUrl(rawUrl: string): string {
+  let url = rawUrl.trim();
+
+  // Entferne doppelte Prefixes
+  url = url.replace(/^https?:\/\//i, "");
+  url = url.replace(/:\d+$/, ""); // entfernt :80, :443, :8080 usw.
+  url = url.replace(/\/+$/, ""); // entfernt trailing slash
+
+  // Baue wieder mit http:// auf (wir testen beide Varianten später)
+  return url;
+}
+
+export interface XtreamSession {
   username: string;
   password: string;
-  serverUrl: string; // e.g. "http://m3u.best-smarter.me:8080"
+  serverUrl: string;
+  auth: boolean;
+  user_info?: any;
+  server_info?: any;
 }
 
-function normalizeBaseUrl(input: string): string {
-  let u = input.replace(/\/player_api\.php.*$/, "").replace(/\/+$/, "");
-  u = u.replace("127.0.0.1", "m3u.best-smarter.me");
-  if (!/^https?:\/\//i.test(u)) u = "http://" + u;
-  const hasPort = /^https?:\/\/[^/]+:\d+/i.test(u);
-  if (!hasPort) u += ":8080";
-  return u;
-}
+/**
+ * Testet automatisch alle Varianten (http/https) für den Xtream Server
+ */
+export async function autoDetectXtreamUrl(serverInput: string, username: string, password: string): Promise<XtreamSession> {
+  const cleanHost = cleanServerUrl(serverInput);
+  const testUrls = [
+    `https://${cleanHost}/player_api.php?username=${username}&password=${password}`,
+    `https://${cleanHost}/api.php?username=${username}&password=${password}`,
+    `http://${cleanHost}/player_api.php?username=${username}&password=${password}`,
+    `http://${cleanHost}/api.php?username=${username}&password=${password}`,
+  ];
 
-async function xtreamGET(base: string, path: string, params?: Record<string, any>) {
-  const url = `${base}${path}`;
-  console.log("📡 XTREAM GET →", url, params ?? {});
-  const res = await axios.get(url, { params, validateStatus: () => true });
-  console.log("📡 XTREAM RES ←", res.status);
-  if (res.status !== 200) {
-    const preview =
-      typeof res.data === "string" ? res.data.slice(0, 200) : JSON.stringify(res.data).slice(0, 200);
-    throw new Error(`HTTP ${res.status} @ ${url} • Body: ${preview}`);
-  }
-  return res.data;
-}
-
-function ensureValidInfo(info: XtreamInfo) {
-  if (!info?.serverUrl) throw new Error("❌ XtreamInfo.serverUrl ist undefined!");
-  if (!info?.username || !info?.password) throw new Error("❌ XtreamInfo ist unvollständig!");
-}
-
-export async function loginXtream(baseUrl: string, username: string, password: string) {
-  if (!baseUrl) throw new Error("❌ Keine Base URL angegeben!");
-  const cleanBase = normalizeBaseUrl(baseUrl);
-  const data = await xtreamGET(cleanBase, "/player_api.php", { username, password });
-  if (data?.user_info?.auth !== 1) throw new Error("Login fehlgeschlagen");
-  console.log("✅ Xtream Login erfolgreich:", data.user_info.username);
-  return { username, password, serverUrl: cleanBase };
-}
-
-export async function getLiveStreams(info?: XtreamInfo) {
-  const xtream = info || getXtreamInfo();
-  ensureValidInfo(xtream!);
-  return xtreamGET(xtream!.serverUrl, "/player_api.php", {
-    username: xtream!.username,
-    password: xtream!.password,
-    action: "get_live_streams",
-  });
-}
-
-export async function getMovieStreams(info?: XtreamInfo) {
-  const xtream = info || getXtreamInfo();
-  ensureValidInfo(xtream!);
-  return xtreamGET(xtream!.serverUrl, "/player_api.php", {
-    username: xtream!.username,
-    password: xtream!.password,
-    action: "get_vod_streams",
-  });
-}
-
-export async function getSeriesStreams(info?: XtreamInfo) {
-  const xtream = info || getXtreamInfo();
-  ensureValidInfo(xtream!);
-  return xtreamGET(xtream!.serverUrl, "/player_api.php", {
-    username: xtream!.username,
-    password: xtream!.password,
-    action: "get_series",
-  });
-}
-
-export async function buildStreamUrl(info: XtreamInfo, streamId: number, streamType?: string): Promise<string> {
-  ensureValidInfo(info);
-  const base = info.serverUrl.replace(/\/$/, "");
-
-  if (streamType?.toLowerCase().includes("live")) {
-    return `${base}/live/${info.username}/${info.password}/${streamId}.m3u8`;
+  for (const testUrl of testUrls) {
+    console.log("🌍 Teste URL:", testUrl);
+    try {
+      const response = await axios.get(testUrl, { timeout: 7000 });
+      if (response.data?.user_info?.auth === 1) {
+        console.log("✅ Erfolgreiche Verbindung:", testUrl);
+        // Extrahiere das Basis-URL (ohne Pfad und Query)
+        const baseUrl = testUrl.split("/player_api.php")[0].split("/api.php")[0];
+        return {
+          username,
+          password,
+          serverUrl: baseUrl,
+          auth: true,
+          user_info: response.data.user_info,
+          server_info: response.data.server_info,
+        };
+      }
+    } catch (err: any) {
+      console.log("❌ Verbindung fehlgeschlagen:", testUrl, err.message || err);
+    }
   }
 
-  if (streamType?.toLowerCase().includes("movie") || streamType?.toLowerCase().includes("vod")) {
-    return `${base}/movie/${info.username}/${info.password}/${streamId}.mp4`;
-  }
+  throw new Error("Keine funktionierende Xtream-URL gefunden. Bitte Serverdaten prüfen.");
+}
 
-  if (streamType?.toLowerCase().includes("series") || streamType?.toLowerCase().includes("episode")) {
-    return `${base}/series/${info.username}/${info.password}/${streamId}.mkv`;
-  }
+/**
+ * Baut den Stream-Link basierend auf Typ auf (Live, Movie, Series)
+ */
+export async function buildStreamUrl(
+  session: XtreamSession,
+  stream_id: string | number,
+  stream_type: string
+): Promise<string> {
+  const base = session.serverUrl;
+  const { username, password } = session;
 
-  return null as any;
+  if (stream_type.toLowerCase().includes("live")) {
+    return `${base}/live/${username}/${password}/${stream_id}.m3u8`;
+  } else if (stream_type.toLowerCase().includes("movie") || stream_type.toLowerCase().includes("vod")) {
+    return `${base}/movie/${username}/${password}/${stream_id}.mp4`;
+  } else if (stream_type.toLowerCase().includes("series")) {
+    return `${base}/series/${username}/${password}/${stream_id}.mp4`;
+  } else {
+    // fallback
+    return `${base}/live/${username}/${password}/${stream_id}.m3u8`;
+  }
 }
