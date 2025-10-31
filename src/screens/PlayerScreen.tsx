@@ -35,15 +35,36 @@ export default function PlayerScreen({ route, navigation }: any) {
 
   const currentChannel = channels[selectedIndex];
 
-  // 🔒 Lock to landscape whenever this screen is focused; never unlock here to avoid flicker
-  useFocusEffect(
-    React.useCallback(() => {
-      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_RIGHT).catch(() => {});
-      return () => {
-        // Intentionally no unlock on blur. We only restore in handleBack().
-      };
-    }, [])
-  );
+  // 🔒 Orientation handling – lock once on mount, restore on unmount
+  useEffect(() => {
+    let isMounted = true;
+
+    const lockLandscape = async () => {
+      try {
+        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE_RIGHT);
+        console.log("📱 Orientation → LANDSCAPE locked");
+      } catch (err) {
+        console.warn("⚠️ Orientation lock failed:", err);
+      }
+    };
+
+    const restorePortrait = async () => {
+      try {
+        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+        console.log("📱 Orientation → restored to PORTRAIT");
+      } catch (err) {
+        console.warn("⚠️ Orientation restore failed:", err);
+      }
+    };
+
+    // Lock only once when mounted
+    lockLandscape();
+
+    return () => {
+      if (isMounted) restorePortrait();
+      isMounted = false;
+    };
+  }, []);
 
   // 🔁 Falls keine Session übergeben wurde → aus AsyncStorage laden
   useEffect(() => {

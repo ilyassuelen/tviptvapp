@@ -126,17 +126,51 @@ export default function HomeScreen() {
       let filteredMovies = filterByLang(allMovies);
       let filteredSeries = filterByLang(allSeries);
 
+      // 🎬 Nur Einträge mit echtem Posterbild behalten (nicht leer oder null)
+      const hasPoster = (item: any) => {
+          const img =
+          item.cover ||
+          item.stream_icon ||
+          item.movie_image ||
+          item.series_image ||
+          item.poster;
+
+          if (!img || typeof img !== "string") return false;
+          const url = img.trim().toLowerCase();
+          if (
+              url === "" ||
+              url.includes("no_image") ||
+              url.includes("null") ||
+              url.includes("missing") ||
+              url.startsWith("http") === false ||
+              url.endsWith(".php") ||
+              url.endsWith(".txt")
+          ) {
+              return false;
+          }
+          return true;
+      };
+
+      // Nur Filme/Serien mit gültigem Bild
+      filteredMovies = filteredMovies.filter((m) => hasPoster(m));
+      filteredSeries = filteredSeries.filter((s) => hasPoster(s));
+
       filteredMovies = filteredMovies.filter((m) => {
         const year = extractYearFromTitle(m.name || m.title || "");
-        return year ? year >= 2010 : true;
+        return year ? year >= 2005 : true;
       });
       filteredSeries = filteredSeries.filter((s) => {
         const year = extractYearFromTitle(s.name || s.title || "");
-        return year ? year >= 2010 : true;
+        return year ? year >= 2005 : true;
       });
 
-      const selectedMovies = getRandomItems(filteredMovies, 10);
-      const selectedSeries = getRandomItems(filteredSeries, 10);
+      // Nur echte Poster verwenden (nach dem Zufall erneut prüfen)
+      const validMovies = filteredMovies.filter(m => hasPoster(m));
+      const validSeries = filteredSeries.filter(s => hasPoster(s));
+
+      // Falls weniger als 10 existieren, fülle nur mit echten auf
+      const selectedMovies = getRandomItems(validMovies, Math.min(validMovies.length, 10));
+      const selectedSeries = getRandomItems(validSeries, Math.min(validSeries.length, 10));
 
       setMovies(selectedMovies);
       setSeries(selectedSeries);
@@ -206,7 +240,7 @@ export default function HomeScreen() {
   useEffect(() => {
     const init = async () => {
       await Font.loadAsync({
-        BungeeInline: require("../../assets/fonts/BungeeInline.ttf"),
+        Bungee: require("../../assets/fonts/Bungee.ttf"),
       });
       const savedLang = await AsyncStorage.getItem("preferred_language");
       if (savedLang) setLanguage(savedLang);
@@ -250,8 +284,23 @@ export default function HomeScreen() {
       item.stream_icon ||
       item.movie_image ||
       item.series_image ||
-      item.poster ||
-      placeholder;
+      item.poster;
+
+    // ❌ Kein gültiges Poster? -> Überspringen
+    if (
+      !img ||
+      typeof img !== "string" ||
+      img.trim() === "" ||
+      img.toLowerCase().includes("no_image") ||
+      img.toLowerCase().includes("null") ||
+      img.toLowerCase().includes("missing") ||
+      img.endsWith(".php") ||
+      img.endsWith(".txt") ||
+      img.startsWith("http") === false
+    ) {
+      return null;
+    }
+
     const title =
       cleanTitle(item.name || item.title || item.stream_display_name) ||
       "Unbekannt";
@@ -270,12 +319,10 @@ export default function HomeScreen() {
           style={styles.posterContainer}
         >
           <Image source={{ uri: img }} style={styles.posterImage} resizeMode="cover" />
-          <View style={{ padding: 8 }}>
-            <Text style={styles.posterTitle} numberOfLines={1}>
-              {title}
-            </Text>
-          </View>
         </TouchableOpacity>
+        <Text style={styles.posterTitle} numberOfLines={1}>
+          {title}
+        </Text>
       </View>
     );
   };
@@ -401,7 +448,7 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   logo: { width: 70, height: 40, resizeMode: "contain" },
-  sectionTitle: { color: "#ddd", fontSize: 17, fontWeight: "700", marginBottom: 6 },
+  sectionTitle: { color: "#ddd", fontSize: 19, fontWeight: "700", marginBottom: 6 },
   refreshContainer: { marginTop: 40, alignSelf: "center", alignItems: "center" },
   refreshButton: {
     backgroundColor: "#fff",
@@ -420,7 +467,7 @@ const styles = StyleSheet.create({
     left: -15,
     zIndex: 10,
     fontSize: 55,
-    fontFamily: "BungeeInline",
+    fontFamily: "Bungee",
     color: "#fff",
     opacity: 0.95,
     textShadowColor: "rgba(0,0,0,0.8)",
@@ -432,14 +479,22 @@ const styles = StyleSheet.create({
     backgroundColor: "#111",
     borderRadius: 8,
     overflow: "hidden",
+    padding: 0, // Remove any padding for title area
   },
   posterImage: {
     width: "100%",
-    height: 180,
+    height: 200,
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
   },
-  posterTitle: { color: "#fff", fontWeight: "600", fontSize: 13 },
+  posterTitle: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 13,
+    textAlign: "center",
+    marginTop: 7,
+    maxWidth: 140,
+  },
 
   // ⬇️ NEU: Styles für Verlauf
   historyItem: { alignItems: "center", marginRight: 16, width: 90 },
