@@ -30,6 +30,8 @@ export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const spinAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  // For animated header
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   const languageLabels: Record<string, string> = {
     DE: "Deutsch",
@@ -352,11 +354,74 @@ export default function HomeScreen() {
     outputRange: ["0deg", "360deg"],
   });
 
+  // Animated header styles
+  const headerHeight = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [80, 50],
+    extrapolate: "clamp",
+  });
+  const headerBgOpacity = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [0, 0.6],
+    extrapolate: "clamp",
+  });
+  const logoScale = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [1, 0.8],
+    extrapolate: "clamp",
+  });
+  // Header overlay color
+  const headerOverlayColor = headerBgOpacity.interpolate({
+    inputRange: [0, 0.6],
+    outputRange: [
+      "rgba(0,0,0,0)",
+      "rgba(0,0,0,0.6)"
+    ],
+    extrapolate: "clamp",
+  });
+
   return (
     <View style={{ flex: 1, backgroundColor: "#000" }}>
-      {/* HEADER */}
-      <View style={styles.header}>
-        <Image source={require("../../assets/logo.png")} style={styles.logo} />
+      {/* Animated Blur HEADER */}
+      <Animated.View
+        style={[
+          styles.header,
+          {
+            height: headerHeight,
+            backgroundColor: "transparent",
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: 0,
+            zIndex: 100,
+            // Remove paddingBottom if needed for animation tightness
+          },
+        ]}
+        pointerEvents="box-none"
+      >
+        <BlurView
+          intensity={40}
+          tint="dark"
+          style={StyleSheet.absoluteFill}
+        />
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: headerOverlayColor,
+            },
+          ]}
+          pointerEvents="none"
+        />
+        <Animated.Image
+          source={require("../../assets/logo.png")}
+          style={[
+            styles.logo,
+            {
+              transform: [{ scale: logoScale }],
+            },
+          ]}
+        />
         <View style={{ flexDirection: "row", gap: 14 }}>
           <TouchableOpacity onPress={() => navigation.navigate("Search")}>
             <Ionicons name="search" size={22} color="#fff" />
@@ -365,10 +430,18 @@ export default function HomeScreen() {
             <Ionicons name="settings-outline" size={22} color="#fff" />
           </TouchableOpacity>
         </View>
-      </View>
+      </Animated.View>
 
       {/* INHALT */}
-      <ScrollView style={{ flex: 1, paddingHorizontal: 10, backgroundColor: "#000" }}>
+      <Animated.ScrollView
+        style={{ flex: 1, paddingHorizontal: 10, backgroundColor: "#000" }}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingTop: 80 }}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false }
+        )}
+      >
         {/* 🎬 HERO BANNER (latestMovie) */}
         {latestMovie && (
           <TouchableOpacity
@@ -494,7 +567,7 @@ export default function HomeScreen() {
             </ScrollView>
           </View>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* 🌫️ Minimalistischer Blur-Ladebildschirm */}
       {refreshing && (

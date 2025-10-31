@@ -11,7 +11,10 @@ import {
   Animated,
   Easing,
   useWindowDimensions,
+  Platform,
+  TouchableWithoutFeedback,
 } from "react-native";
+import { BlurView } from "expo-blur";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
@@ -23,17 +26,32 @@ export default function PlayerScreen({ route, navigation }: any) {
   const { channels, currentIndex, session: sessionFromRoute } = route.params;
   const [session, setSession] = useState<any>(sessionFromRoute || null);
   const [selectedIndex, setSelectedIndex] = useState(currentIndex);
+  // --- Overlay/Player States ---
+  const [controlsVisible, setControlsVisible] = useState(true);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [showControls, setShowControls] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [barWidth, setBarWidth] = useState(0);
+  const hideTimeout = useRef<NodeJS.Timeout | null>(null);
+  // --- End Overlay/Player States ---
   const [currentUrl, setCurrentUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  //const videoRef = useRef<VideoView>(null);
-  const progress = useRef(new Animated.Value(0)).current;
-  const { width: SW, height: SH } = useWindowDimensions();
-
+  // --- Player Ref for VLC ---
+  const vlcRef = useRef<any>(null);
+  // For backward compatibility (old code)
+  const playerRef = vlcRef;
   const currentChannel = channels[selectedIndex];
+
+  // Determine if this is a live channel (for overlays)
+  const isLive =
+    !!(
+      currentChannel?.stream_type &&
+      (
+        currentChannel.stream_type.toLowerCase().includes("live") ||
+        currentChannel.stream_type.toLowerCase().includes("tv")
+      )
+    );
 
   // 🔒 Orientation handling – lock once on mount, restore on unmount
   useEffect(() => {
@@ -162,195 +180,237 @@ export default function PlayerScreen({ route, navigation }: any) {
     }
   };
 
-  const enterFullscreen = () => {
-    setIsFullscreen(true);
-    setShowControls(true);
-    Animated.timing(progress, {
-      toValue: 1,
-      duration: 400,
-      easing: Easing.inOut(Easing.ease),
-      useNativeDriver: false,
-    }).start();
+  // --- Overlay/Player Controls logic ---
+  // Helper: format seconds to HH:MM:SS or MM:SS
+  const formatTime = (sec: number) => {
+    if (!isFinite(sec)) return "00:00";
+    sec = Math.max(0, Math.floor(sec));
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    if (h > 0) return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+    return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
-  const exitFullscreen = () => {
-    Animated.timing(progress, {
-      toValue: 0,
-      duration: 400,
-      easing: Easing.inOut(Easing.ease),
-      useNativeDriver: false,
-    }).start(() => {
-      setIsFullscreen(false);
-      setShowControls(false);
-    });
-  };
-
-  const togglePlayPause = () => {
-    setIsPlaying((prev) => !prev);
-  };
-
-  const handleNextChannel = () => {
-    if (channels && selectedIndex < channels.length - 1) {
-      setSelectedIndex(selectedIndex + 1);
-    }
-  };
-
-  // Auto-hide fullscreen controls after 3 seconds
-  useEffect(() => {
-    if (showControls && isFullscreen) {
-      const timeout = setTimeout(() => {
-        setShowControls(false);
-      }, 3000);
-      return () => clearTimeout(timeout);
-    }
-  }, [showControls, isFullscreen]);
-
-  const handleVideoPress = () => {
-    if (isFullscreen && !showControls) {
-      // If in fullscreen and controls are hidden, tap exits fullscreen
-      exitFullscreen();
+  // Toggle overlay controls visibility
+  const toggleControls = () => {
+    if (controlsVisible) {
+      setControlsVisible(false);
     } else {
-      setShowControls((p) => !p);
+      setControlsVisible(true);
+      if (hideTimeout.current) clearTimeout(hideTimeout.current);
+      hideTimeout.current = setTimeout(() => setControlsVisible(false), 3000);
     }
   };
 
+  // Play/Pause toggle
+  const togglePlayPause = () => {
+    if (vlcRef.current && vlcRef.current.pause) {
+      vlcRef.current.pause(isPlaying); // passing true pauses, false plays
+      setIsPlaying((prev) => !prev);
+    }
+  };
+
+  // Next/Prev handlers for live
+  const handlePrev = () => {
+    if (isLive && selectedIndex > 0) {
+      setSelectedIndex(selectedIndex - 1);
+      setProgress(0);
+    }
+  };
+  const handleNext = () => {
+    if (isLive && selectedIndex < channels.length - 1) {
+      setSelectedIndex(selectedIndex + 1);
+      setProgress(0);
+    }
+  };
+
+  // Seek handler for VOD
+  const handleSeek = (value: number) => {
+    if (!isLive && vlcRef.current && vlcRef.current.seek) {
+      vlcRef.current.seek(value);
+      setProgress(value);
+    }
+  };
+
+  // Listen for VLC progress updates
+  useEffect(() => {
+    // Reset progress/duration on channel change
+    setProgress(0);
+    setDuration(0);
+  }, [currentUrl]);
+
+  // Handler for VLC events
+  const handleVlcProgress = (e: any) => {
+    // e.currentTime, e.duration (in seconds)
+    if (typeof e?.currentTime === "number") setProgress(e.currentTime);
+    if (typeof e?.duration === "number") setDuration(e.duration);
+  };
+
+  // Hide controls after 3s when shown
+  useEffect(() => {
+    if (controlsVisible) {
+      if (hideTimeout.current) clearTimeout(hideTimeout.current);
+      hideTimeout.current = setTimeout(() => setControlsVisible(false), 3000);
+    }
+    return () => {
+      if (hideTimeout.current) clearTimeout(hideTimeout.current);
+    };
+  }, [controlsVisible]);
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <TouchableOpacity style={styles.backHeaderBtn} onPress={handleBack}>
-          <Ionicons name="arrow-back" size={22} color="#fff" />
-          <Text style={{ color: "#fff", marginLeft: 6 }}>Zurück</Text>
-        </TouchableOpacity>
+      {/* Back Button with Blur Overlay */}
+      <View style={styles.backButton}>
+        <BlurView
+          intensity={40}
+          tint="dark"
+          style={{ borderRadius: 20, overflow: "hidden" }}
+        >
+          <TouchableOpacity
+            onPress={handleBack}
+            style={{
+              padding: 0,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Ionicons name="chevron-back" size={26} color="#fff" />
+          </TouchableOpacity>
+        </BlurView>
       </View>
-
-      {!isFullscreen && (
-        <View style={styles.splitContainer}>
-          <View style={styles.leftPane}>
-            <FlatList
-              data={channels}
-              keyExtractor={(_, i) => i.toString()}
-              renderItem={({ item, index }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.channelItem,
-                    index === selectedIndex && styles.channelItemSelected,
-                  ]}
-                  onPress={() => setSelectedIndex(index)}
-                  activeOpacity={0.8}
-                >
-                  <Image
-                    source={{
-                      uri: item.stream_icon || "https://via.placeholder.com/60x60",
-                    }}
-                    style={styles.channelLogo}
-                  />
-                  <Text
-                    style={[
-                      styles.channelName,
-                      index === selectedIndex && { color: "#fff" },
-                    ]}
-                  >
-                    {item.name}
-                  </Text>
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-
-          <View style={styles.rightPane}>
-            {loading ? (
-              <View style={[styles.center, { flex: 1 }]}>
-                <ActivityIndicator color="#ff5722" size="large" />
-                <Text style={{ color: "#fff", marginTop: 10 }}>Lade Stream...</Text>
-              </View>
-            ) : errorMsg ? (
-              <Text style={{ color: "red" }}>{errorMsg}</Text>
-            ) : null}
-          </View>
-        </View>
-      )}
-
+      {/* VLC Player fullscreen with overlays */}
       {currentUrl && (
-        !isFullscreen ? (
-          <View style={styles.playerContainer}>
-            <TouchableOpacity
-              activeOpacity={1}
-              style={StyleSheet.absoluteFill}
-              onPress={enterFullscreen}
-            >
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "#000",
+            zIndex: 1,
+          }}
+        >
+          <TouchableWithoutFeedback onPress={toggleControls}>
+            <View style={{ flex: 1 }}>
               <VLCPlayer
-                key={currentUrl}
-                style={StyleSheet.absoluteFill}
+                ref={vlcRef}
+                style={{ width: "100%", height: "100%" }}
                 source={{ uri: currentUrl }}
                 autoPlay
                 initType="network"
                 initOptions={
                   currentChannel.stream_type === "live"
-                    ? ['--network-caching=500', '--rtsp-tcp', '--avcodec-hw=any']
-                    : ['--network-caching=3000', '--no-drop-late-frames', '--no-skip-frames', '--rtsp-tcp', '--avcodec-hw=any']
+                    ? [
+                        "--network-caching=500",
+                        "--rtsp-tcp",
+                        "--avcodec-hw=any",
+                      ]
+                    : [
+                        "--network-caching=3000",
+                        "--no-drop-late-frames",
+                        "--no-skip-frames",
+                        "--rtsp-tcp",
+                        "--avcodec-hw=any",
+                      ]
                 }
                 onError={(err) => console.log("❌ VLC Fehler:", err)}
                 onPlaying={() => console.log("▶️ VLC Stream läuft")}
                 onBuffering={() => console.log("⏳ VLC lädt...")}
                 onStopped={() => console.log("⏹️ VLC gestoppt")}
+                onProgress={handleVlcProgress}
               />
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: "#000", zIndex: 99 }]}>
-            <TouchableOpacity
-              style={StyleSheet.absoluteFill}
-              activeOpacity={1}
-              onPress={handleVideoPress}
-            >
-              <VLCPlayer
-                style={StyleSheet.absoluteFill}
-                source={{ uri: currentUrl }}
-                autoPlay
-                initType="network"
-                initOptions={
-                  currentChannel.stream_type === "live"
-                    ? ['--network-caching=500', '--rtsp-tcp', '--avcodec-hw=any']
-                    : ['--network-caching=3000', '--no-drop-late-frames', '--no-skip-frames', '--rtsp-tcp', '--avcodec-hw=any']
-                }
-                onError={(err) => console.log("❌ VLC Fehler:", err)}
-                onPlaying={() => console.log("▶️ VLC Stream läuft")}
-                onBuffering={() => console.log("⏳ VLC lädt...")}
-                onStopped={() => console.log("⏹️ VLC gestoppt")}
-              />
-            </TouchableOpacity>
-
-            {showControls && (
-              <View style={styles.overlay}>
-                <TouchableOpacity
-                  style={styles.backOverlayButton}
-                  onPress={exitFullscreen}
-                >
-                  <Ionicons name="arrow-back" size={22} color="#fff" />
-                </TouchableOpacity>
-
-                <View style={styles.controlsRow}>
-                  <TouchableOpacity onPress={togglePlayPause}>
-                    <Ionicons
-                      name={isPlaying ? "pause-circle" : "play-circle"}
-                      size={76}
-                      color="#fff"
-                    />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity onPress={handleNextChannel}>
-                    <Ionicons
-                      name="play-skip-forward-circle"
-                      size={66}
-                      color="#fff"
-                    />
-                  </TouchableOpacity>
+              {/* Overlay Controls */}
+              {controlsVisible && (
+                <View style={styles.overlayModern}>
+                  {/* Center Controls */}
+                  <View style={styles.centerControls}>
+                    <TouchableOpacity onPress={handlePrev} disabled={!isLive || selectedIndex === 0}>
+                      <Ionicons name="play-skip-back" size={36} color="#fff" style={{ opacity: isLive && selectedIndex > 0 ? 1 : 0.3 }} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={togglePlayPause}>
+                      <Ionicons name={isPlaying ? "pause-circle" : "play-circle"} size={48} color="#fff" />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleNext} disabled={!isLive || selectedIndex === channels.length - 1}>
+                      <Ionicons name="play-skip-forward" size={36} color="#fff" style={{ opacity: isLive && selectedIndex < channels.length - 1 ? 1 : 0.3 }} />
+                    </TouchableOpacity>
+                  </View>
+                  {/* Bottom Bar */}
+                  <View style={styles.bottomBar}>
+                    {isLive ? (
+                      <Text style={styles.liveLabel}>● LIVE</Text>
+                    ) : (
+                      <View style={{ flex: 1 }}>
+                        <View
+                          onLayout={(e) => {
+                            const { width } = e.nativeEvent.layout;
+                            setBarWidth(width);
+                          }}
+                          onStartShouldSetResponder={() => true}
+                          onResponderGrant={(e) => {
+                            if (!isLive && duration > 0 && barWidth > 0) {
+                              const { locationX } = e.nativeEvent;
+                              const newTime = Math.max(0, Math.min((locationX / barWidth) * duration, duration));
+                              setProgress(newTime);
+                            }
+                          }}
+                          onResponderMove={(e) => {
+                            if (!isLive && duration > 0 && barWidth > 0) {
+                              const { locationX } = e.nativeEvent;
+                              const newTime = Math.max(0, Math.min((locationX / barWidth) * duration, duration));
+                              setProgress(newTime);
+                            }
+                          }}
+                          onResponderRelease={(e) => {
+                            if (!isLive && duration > 0 && vlcRef.current && vlcRef.current.seek && barWidth > 0) {
+                              const { locationX } = e.nativeEvent;
+                              const newTime = Math.max(0, Math.min((locationX / barWidth) * duration, duration));
+                              vlcRef.current.seek(newTime / duration);
+                              setProgress(newTime);
+                            }
+                          }}
+                        >
+                          <View
+                            style={{
+                              height: 10,
+                              backgroundColor: "#333",
+                              borderRadius: 5,
+                              overflow: "hidden",
+                            }}
+                          >
+                            <View
+                              style={{
+                                width: `${(progress / (duration || 1)) * 100}%`,
+                                backgroundColor: "#ff5722",
+                                height: "100%",
+                              }}
+                            />
+                          </View>
+                        </View>
+                        <Text style={[styles.timeLabel, { textAlign: "right", marginTop: 6 }]}>
+                          {formatTime(progress)} / {formatTime(duration)}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
-              </View>
-            )}
-          </View>
-        )
+              )}
+              {/* Loading/Error Overlay */}
+              {loading && (
+                <View style={[styles.overlay]}>
+                  <ActivityIndicator color="#ff5722" size="large" />
+                  <Text style={{ color: "#fff", marginTop: 10 }}>Lade Stream...</Text>
+                </View>
+              )}
+              {errorMsg && (
+                <View style={[styles.overlay]}>
+                  <Text style={{ color: "red" }}>{errorMsg}</Text>
+                </View>
+              )}
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
       )}
     </View>
   );
@@ -358,53 +418,49 @@ export default function PlayerScreen({ route, navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000" },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#111",
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderBottomColor: "#222",
-    borderBottomWidth: 1,
-  },
-  backHeaderBtn: { flexDirection: "row", alignItems: "center" },
-  splitContainer: { flex: 1, flexDirection: "row", backgroundColor: "#000" },
-  leftPane: {
-    width: "35%",
-    backgroundColor: "#0b0b0b",
-    borderRightColor: "#1e1e1e",
-    borderRightWidth: 1,
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-  },
-  channelItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 5,
-    marginHorizontal: 4,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.03)",
-  },
-  channelItemSelected: {
-    backgroundColor: "rgba(255, 87, 34, 0.15)",
-    borderLeftColor: "#ff5722",
-    borderLeftWidth: 3,
-  },
-  channelLogo: { width: 46, height: 46, borderRadius: 6, marginRight: 10 },
-  channelName: { color: "#ddd", fontSize: 15, fontWeight: "500", flexShrink: 1 },
-  rightPane: { width: "65%", backgroundColor: "#000", justifyContent: "center", alignItems: "center" },
+  // Removed unused styles: headerRow, backHeaderBtn, splitContainer, leftPane, channelItem, channelItemSelected, channelLogo, channelName, rightPane
   overlay: { ...StyleSheet.absoluteFillObject, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.35)" },
+  overlayModern: {
+    position: "absolute",
+    top: 0, left: 0, right: 0, bottom: 0,
+    justifyContent: "space-between",
+    backgroundColor: "rgba(0,0,0,0.25)",
+    zIndex: 100,
+  },
+  centerControls: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 25,
+    flex: 1,
+  },
+  bottomBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+    minHeight: 44,
+  },
+  liveLabel: {
+    color: "#ff4040",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  timeLabel: {
+    color: "#fff",
+    fontSize: 13,
+    marginLeft: 10,
+  },
   backOverlayButton: { position: "absolute", top: 22, left: 18, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.2)", justifyContent: "center", alignItems: "center" },
   controlsRow: { flexDirection: "row", alignItems: "center", gap: 44 },
   center: { justifyContent: "center", alignItems: "center" },
-  playerContainer: {
+  backButton: {
     position: 'absolute',
-    left: '35%',
-    top: 60,
-    width: '65%',
-    bottom: 0,
-    backgroundColor: '#000',
+    top: Platform.OS === 'ios' ? 50 : 30,
+    left: 20,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 20,
+    padding: 8,
+    zIndex: 10,
   },
 });
