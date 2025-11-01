@@ -1,14 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View, Text, Image, FlatList, TouchableOpacity,
   Platform, Dimensions
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRoute, useNavigation } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
+import * as Font from "expo-font";
 
 const { width } = Dimensions.get("window");
-const POSTER_WIDTH = (width - 40) / 3;
-const POSTER_HEIGHT = POSTER_WIDTH * 1.5;
 
 function cleanTitle(rawTitle: string): string {
   if (!rawTitle) return "Unbekannt";
@@ -28,6 +28,7 @@ export default function CategoryMoviesScreen() {
 
   const [sorted, setSorted] = useState(false);
   const [displayedMovies, setDisplayedMovies] = useState(movies || []);
+  const [fontsLoaded, setFontsLoaded] = useState(false);
 
   const handleSort = () => {
     if (sorted) {
@@ -46,85 +47,86 @@ export default function CategoryMoviesScreen() {
     }
   };
 
-  const renderItem = ({ item }: { item: any }) => {
-    const poster = item.stream_icon || item.movie_image || item.poster || placeholder;
+  useEffect(() => {
+    (async () => {
+      try {
+        await Font.loadAsync({
+          Bungee: require("../../assets/fonts/Bungee.ttf"),
+        });
+        setFontsLoaded(true);
+      } catch (e) {
+        setFontsLoaded(true);
+      }
+    })();
+  }, []);
+
+  // HomeScreen-style: skip images with "no_image", .php, etc.
+  function isValidImage(img: string | undefined | null) {
+    if (!img) return false;
+    if (img.toLowerCase().includes("no_image")) return false;
+    if (img.toLowerCase().endsWith(".php")) return false;
+    if (img.trim() === "") return false;
+    return true;
+  }
+
+  const renderItem = ({ item, index }: { item: any; index: number }) => {
+    const img =
+      item.stream_icon ||
+      item.movie_image ||
+      item.poster ||
+      "";
     const rawTitle = item.name || item.title || item.stream_display_name || "Unbekannt";
     const title = cleanTitle(rawTitle);
 
-    // Rating-Berechnung einfügen
     let displayRating = null;
-
     if (item.rating !== undefined && item.rating !== null && item.rating !== "") {
       displayRating = parseFloat(item.rating);
     } else if (item.rating_5based !== undefined && item.rating_5based !== null) {
       displayRating = parseFloat(item.rating_5based) * 2;
     }
-
     if (isNaN(displayRating)) {
       displayRating = null;
     }
 
-    return (
-      <View style={{ flex: 1 / 3, alignItems: "center", marginVertical: 8 }}>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => navigation.navigate("MovieDetail", { movie: item })}
-        >
-          <View
-            style={{
-              width: POSTER_WIDTH,
-              height: POSTER_HEIGHT,
-              borderRadius: 10,
-              overflow: "hidden",
-              backgroundColor: "#111",
-            }}
-          >
-            {/* Bewertungs-View direkt über dem Posterbild */}
-            {displayRating !== null && (
-              <View
-                style={{
-                  position: "absolute",
-                  top: 6,
-                  right: 6,
-                  backgroundColor: "rgba(0,0,0,0.7)",
-                  borderRadius: 6,
-                  paddingVertical: 2,
-                  paddingHorizontal: 5,
-                  zIndex: 10,
-                }}
-              >
-                <Text style={{ color: "gold", fontSize: 12 }}>
-                  ⭐ {displayRating ? displayRating.toFixed(1) : "-"}
-                </Text>
-              </View>
-            )}
-            <Image source={{ uri: poster }} style={{ width: "100%", height: "100%" }} />
-          </View>
-          <Text
-            style={{
-              color: "#fff",
-              fontSize: 13,
-              fontWeight: "600",
-              textAlign: "center",
-              marginTop: 6,
-              width: POSTER_WIDTH - 6,
-            }}
-            numberOfLines={1}
-          >
-            {title}
-          </Text>
-        </TouchableOpacity>
+    // HomeScreen: skip invalid images
+    if (!isValidImage(img)) {
+      return null;
+    }
+
+  return (
+    <TouchableOpacity
+      key={index}
+      activeOpacity={0.9}
+      onPress={() => navigation.navigate("MovieDetail", { movie: item })}
+      style={styles.posterContainer}
+    >
+      <Image source={{ uri: img }} style={styles.posterImage} resizeMode="cover" />
+      <LinearGradient
+        colors={["transparent", "rgba(0,0,0,0.55)", "rgba(0,0,0,0.85)"]}
+        style={styles.posterGradient}
+      />
+      <View style={styles.posterFooter}>
+        <Text style={styles.posterTitle} numberOfLines={1}>
+          {title}
+        </Text>
       </View>
-    );
+      {displayRating !== null && (
+        <View style={styles.ratingBadge}>
+          <Ionicons name="star" size={12} color="#FFFFFF" />
+          <Text style={styles.ratingText}>{displayRating.toFixed(1)}</Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000" }}>
+    <View style={{ flex: 1, backgroundColor: "#0A0A0A" }}>
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
-          backgroundColor: "#000",
+          backgroundColor: "#0A0A0A",
           paddingTop: Platform.OS === "ios" ? 50 : 30,
           paddingBottom: 10,
           paddingHorizontal: 14,
@@ -160,9 +162,75 @@ export default function CategoryMoviesScreen() {
         data={displayedMovies}
         numColumns={3}
         keyExtractor={(_, i) => i.toString()}
-        renderItem={renderItem}
-        contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: 20 }}
+        renderItem={({ item, index }) => renderItem({ item, index })}
+        contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: 50 }}
+        columnWrapperStyle={{ justifyContent: "space-between", marginBottom: 14 }}
+        showsVerticalScrollIndicator={false}
       />
     </View>
   );
 }
+
+const styles = require("react-native").StyleSheet.create({
+  posterContainer: {
+    width: "31.5%",
+    backgroundColor: "#121212",
+    borderRadius: 12,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.05)",
+  },
+  posterImage: {
+    width: "100%",
+    height: 200,
+  },
+  posterGradient: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 70,
+  },
+  posterFooter: {
+    position: "absolute",
+    left: 8,
+    right: 8,
+    bottom: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.25)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  posterTitle: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 12.5,
+    textAlign: "left",
+  },
+  ratingBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    shadowColor: "#000",
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 3,
+  },
+  ratingText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
+    marginLeft: 4,
+  },
+});

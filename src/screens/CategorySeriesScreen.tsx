@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,13 +7,14 @@ import {
   TouchableOpacity,
   Platform,
   Dimensions,
+  StyleSheet,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRoute, useNavigation } from "@react-navigation/native";
+import * as Font from "expo-font";
+import { LinearGradient } from "expo-linear-gradient";
 
-const { width } = Dimensions.get("window");
-const POSTER_WIDTH = (width - 40) / 3;
-const POSTER_HEIGHT = POSTER_WIDTH * 1.5;
 
 // 🧹 Titel bereinigen
 function cleanTitle(rawTitle: string): string {
@@ -33,18 +34,25 @@ export default function CategorySeriesScreen() {
     series: [],
   };
 
-  const placeholder = "https://via.placeholder.com/150x200.png?text=Kein+Bild";
-
   const [sorted, setSorted] = useState(false);
   const [displayedSeries, setDisplayedSeries] = useState(series || []);
+  const [fontLoaded, setFontLoaded] = useState(false);
+
+  // Font laden wie im HomeScreen
+  useEffect(() => {
+    (async () => {
+      await Font.loadAsync({
+        Bungee: require("../../assets/fonts/Bungee.ttf"),
+      });
+      setFontLoaded(true);
+    })();
+  }, []);
 
   const handleSort = () => {
     if (sorted) {
-      // Ursprüngliche Reihenfolge wiederherstellen
       setDisplayedSeries(series);
       setSorted(false);
     } else {
-      // Nach bester Bewertung sortieren
       const sortedSeries = [...displayedSeries].sort((a, b) => {
         const ratingA = parseFloat(a.rating || a.rating_5based * 2 || 0);
         const ratingB = parseFloat(b.rating || b.rating_5based * 2 || 0);
@@ -55,95 +63,92 @@ export default function CategorySeriesScreen() {
     }
   };
 
-  const renderItem = ({ item }: { item: any }) => {
-    const poster =
+  // Bild-Validierung wie im HomeScreen
+  function isValidImage(img: string | undefined | null): boolean {
+    if (
+      !img ||
+      typeof img !== "string" ||
+      img.trim() === "" ||
+      img.toLowerCase().includes("no_image") ||
+      img.toLowerCase().includes("null") ||
+      img.toLowerCase().includes("missing") ||
+      img.endsWith(".php") ||
+      img.endsWith(".txt") ||
+      img.startsWith("http") === false
+    ) {
+      return false;
+    }
+    return true;
+  }
+
+  // FlatList renderItem für einzelne Serie
+  const renderItem = (item: any, index: number) => {
+    // Bestes Bild nehmen
+    const img =
       item.cover ||
       item.stream_icon ||
       item.series_image ||
       item.poster ||
-      placeholder;
+      "";
+    if (!isValidImage(img)) {
+      return null;
+    }
     const rawTitle =
       item.name || item.title || item.stream_display_name || "Unbekannt";
     const title = cleanTitle(rawTitle);
-
-    // Rating-Berechnung
     let displayRating = null;
-
     if (item.rating !== undefined && item.rating !== null && item.rating !== "") {
       displayRating = parseFloat(item.rating);
     } else if (item.rating_5based !== undefined && item.rating_5based !== null) {
       displayRating = parseFloat(item.rating_5based) * 2;
     }
-
     if (isNaN(displayRating)) {
       displayRating = null;
     }
-
     return (
-      <View style={{ flex: 1 / 3, alignItems: "center", marginVertical: 8 }}>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => navigation.navigate("SeriesDetail", { serie: item })}
-        >
-          <View
-            style={{
-              width: POSTER_WIDTH,
-              height: POSTER_HEIGHT,
-              borderRadius: 10,
-              overflow: "hidden",
-              backgroundColor: "#111",
-            }}
-          >
-            {displayRating !== null && (
-              <View
-                style={{
-                  position: "absolute",
-                  top: 6,
-                  right: 6,
-                  backgroundColor: "rgba(0,0,0,0.7)",
-                  borderRadius: 6,
-                  paddingVertical: 2,
-                  paddingHorizontal: 5,
-                  zIndex: 10,
-                }}
-              >
-                <Text style={{ color: "gold", fontSize: 12 }}>
-                  ⭐ {displayRating ? displayRating.toFixed(1) : "-"}
-                </Text>
-              </View>
-            )}
-            <Image
-              source={{ uri: poster }}
-              style={{ width: "100%", height: "100%" }}
-              resizeMode="cover"
-            />
-          </View>
-          <Text
-            style={{
-              color: "#fff",
-              fontSize: 13,
-              fontWeight: "600",
-              textAlign: "center",
-              marginTop: 6,
-              width: POSTER_WIDTH - 6,
-            }}
-            numberOfLines={1}
-          >
+      <TouchableOpacity
+        key={index}
+        activeOpacity={0.9}
+        onPress={() => navigation.navigate("SeriesDetail", { serie: item })}
+        style={styles.posterContainer}
+      >
+        <Image source={{ uri: img }} style={styles.posterImage} resizeMode="cover" />
+        <LinearGradient
+          colors={["transparent", "rgba(0,0,0,0.55)", "rgba(0,0,0,0.85)"]}
+          style={styles.posterGradient}
+        />
+        <View style={styles.posterFooter}>
+          <Text style={styles.posterTitle} numberOfLines={1}>
             {title}
           </Text>
-        </TouchableOpacity>
-      </View>
+        </View>
+        {displayRating !== null && (
+          <View style={styles.ratingBadge}>
+            <Ionicons name="star" size={12} color="#FFFFFF" />
+            <Text style={styles.ratingText}>{displayRating.toFixed(1)}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
     );
   };
 
+
+  if (!fontLoaded) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#0A0A0A", justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator color="#fff" size="large" />
+      </View>
+    );
+  }
+
   return (
-    <View style={{ flex: 1, backgroundColor: "#000" }}>
+    <View style={{ flex: 1, backgroundColor: "#0A0A0A" }}>
       {/* 🔙 Header */}
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
-          backgroundColor: "#000",
+          backgroundColor: "#0A0A0A",
           paddingTop: Platform.OS === "ios" ? 50 : 30,
           paddingBottom: 10,
           paddingHorizontal: 14,
@@ -183,17 +188,81 @@ export default function CategorySeriesScreen() {
         </Text>
       </TouchableOpacity>
 
-      {/* 🎞️ Serien-Grid */}
+      {/* 🎞️ Serien-Grid: FlatList mit 3 Spalten */}
       <FlatList
         data={displayedSeries}
+        renderItem={({ item, index }) => renderItem(item, index)}
         numColumns={3}
-        keyExtractor={(_, i) => i.toString()}
-        renderItem={renderItem}
-        contentContainerStyle={{
-          paddingHorizontal: 10,
-          paddingBottom: 20,
-        }}
+        columnWrapperStyle={{ justifyContent: "space-between", marginBottom: 14 }}
+        contentContainerStyle={{ paddingHorizontal: 10, paddingBottom: 50 }}
+        showsVerticalScrollIndicator={false}
+        keyExtractor={(item, i) => i.toString()}
       />
     </View>
   );
 }
+// HomeScreen Styles übernehmen:
+const styles = StyleSheet.create({
+  posterContainer: {
+    width: "31.5%",
+    backgroundColor: "#121212",
+    borderRadius: 12,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.05)",
+    marginBottom: 16,
+  },
+  posterImage: {
+    width: "100%",
+    height: 200,
+  },
+  posterGradient: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 70,
+  },
+  posterFooter: {
+    position: "absolute",
+    left: 8,
+    right: 8,
+    bottom: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.25)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  posterTitle: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 12.5,
+    textAlign: "left",
+  },
+  ratingBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    shadowColor: "#000",
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 3,
+  },
+  ratingText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
+    marginLeft: 4,
+  },
+});

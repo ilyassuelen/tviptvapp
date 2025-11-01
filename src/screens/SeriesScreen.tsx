@@ -4,6 +4,7 @@ import {
   TextInput, Animated, FlatList, TouchableWithoutFeedback
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
 import * as Font from "expo-font";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -30,7 +31,10 @@ export default function SeriesScreen() {
 
   useEffect(() => {
     const loadFonts = async () => {
-      await Font.loadAsync({ Orbitron: require("../../assets/fonts/Prisma.ttf") });
+      await Font.loadAsync({
+        Orbitron: require("../../assets/fonts/Prisma.ttf"),
+        Bungee: require("../../assets/fonts/Bungee.ttf"),
+      });
       setFontsLoaded(true);
     };
 
@@ -154,8 +158,31 @@ export default function SeriesScreen() {
   const placeholderImage = "https://via.placeholder.com/140x180.png?text=Kein+Bild";
 
   const renderSerie = (serie: any, index: number) => {
-    const posterUri = serie.cover || serie.stream_icon || serie.series_image || serie.poster || placeholderImage;
-    const title = cleanTitle(serie.name || serie.title || serie.stream_display_name || "Unbekannt");
+    const img =
+      serie.cover ||
+      serie.stream_icon ||
+      serie.series_image ||
+      serie.poster ||
+      placeholderImage;
+
+    // Bildvalidierung wie im HomeScreen
+    if (
+      !img ||
+      typeof img !== "string" ||
+      img.trim() === "" ||
+      img.toLowerCase().includes("no_image") ||
+      img.toLowerCase().includes("null") ||
+      img.toLowerCase().includes("missing") ||
+      img.endsWith(".php") ||
+      img.endsWith(".txt") ||
+      img.startsWith("http") === false
+    ) {
+      return null;
+    }
+
+    const title = cleanTitle(
+      serie.name || serie.title || serie.stream_display_name || "Unbekannt"
+    );
 
     // ⭐️ Rating-Badge Logik
     let displayRating = null;
@@ -169,44 +196,30 @@ export default function SeriesScreen() {
     }
 
     return (
-      <TouchableOpacity
-        key={index}
-        style={{
-          width: 140, marginRight: 20, backgroundColor: "#111",
-          borderRadius: 8, overflow: "hidden",
-        }}
-        onPress={() => navigation.navigate("SeriesDetail", { serie })}
-      >
-        {/* Rating-Badge */}
-        {displayRating !== null && (
-          <View
-            style={{
-              position: "absolute",
-              top: 6,
-              right: 6,
-              backgroundColor: "rgba(0,0,0,0.7)",
-              borderRadius: 6,
-              paddingVertical: 2,
-              paddingHorizontal: 5,
-              zIndex: 10,
-            }}
-          >
-            <Text style={{ color: "gold", fontSize: 12 }}>
-              ⭐ {displayRating ? displayRating.toFixed(1) : "-"}
+      <View key={index} style={{ marginRight: 18, alignItems: "center" }}>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => navigation.navigate("SeriesDetail", { serie })}
+          style={styles.posterContainer}
+        >
+          <Image source={{ uri: img }} style={styles.posterImage} resizeMode="cover" />
+          <LinearGradient
+            colors={["transparent", "rgba(0,0,0,0.55)", "rgba(0,0,0,0.85)"]}
+            style={styles.posterGradient}
+          />
+          <View style={styles.posterFooter}>
+            <Text style={styles.posterTitle} numberOfLines={1}>
+              {title}
             </Text>
           </View>
-        )}
-        <Image
-          source={{ uri: posterUri }}
-          style={{ width: "100%", height: 180, borderTopLeftRadius: 8, borderTopRightRadius: 8 }}
-          resizeMode="cover"
-        />
-        <View style={{ padding: 8 }}>
-          <Text style={{ color: "#fff", fontWeight: "600", fontSize: 13 }} numberOfLines={1}>
-            {title}
-          </Text>
-        </View>
-      </TouchableOpacity>
+          {displayRating !== null && (
+            <View style={styles.ratingBadge}>
+              <Ionicons name="star" size={12} color="#FFFFFF" />
+              <Text style={styles.ratingText}>{displayRating.toFixed(1)}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -325,6 +338,70 @@ export default function SeriesScreen() {
 
 const styles = {
   center: {
-    flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#000",
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#000",
+  },
+  posterContainer: {
+    width: 140,
+    backgroundColor: "#121212",
+    borderRadius: 12,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.05)",
+  },
+  posterImage: {
+    width: "100%",
+    height: 200,
+  },
+  posterGradient: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 70,
+  },
+  posterFooter: {
+    position: "absolute",
+    left: 8,
+    right: 8,
+    bottom: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.25)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  posterTitle: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 12.5,
+    textAlign: "left",
+  },
+  ratingBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    shadowColor: "#000",
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 3,
+  },
+  ratingText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
+    marginLeft: 4,
   },
 };

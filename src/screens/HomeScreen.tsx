@@ -9,12 +9,14 @@ import {
   Platform,
   Animated,
   StyleSheet,
+  StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import * as Font from "expo-font";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
 
 export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
@@ -291,7 +293,7 @@ export default function HomeScreen() {
   if (!fontsLoaded || loading)
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#ff5722" />
+        <ActivityIndicator size="large" color="#FFFFFF" />
       </View>
     );
 
@@ -339,10 +341,10 @@ export default function HomeScreen() {
       "Unbekannt";
 
     return (
-      <View key={i} style={{ marginRight: 22, alignItems: "center" }}>
+      <View key={i} style={{ marginRight: 18, alignItems: "center" }}>
         <Text style={styles.indexText}>{i + 1}</Text>
         <TouchableOpacity
-          activeOpacity={0.8}
+          activeOpacity={0.9}
           onPress={() =>
             navigation.navigate(
               type === "movie" ? "MovieDetail" : "SeriesDetail",
@@ -352,28 +354,25 @@ export default function HomeScreen() {
           style={styles.posterContainer}
         >
           <Image source={{ uri: img }} style={styles.posterImage} resizeMode="cover" />
-          {/* Rating-Badge NEU */}
+          {/* Glass gradient overlay at bottom */}
+          <LinearGradient
+            colors={["transparent", "rgba(0,0,0,0.55)", "rgba(0,0,0,0.85)"]}
+            style={styles.posterGradient}
+          />
+          {/* Title inside image footer */}
+          <View style={styles.posterFooter}>
+            <Text style={styles.posterTitle} numberOfLines={1}>
+              {title}
+            </Text>
+          </View>
+          {/* Rating badge (monochrome) */}
           {displayRating !== null && (
-            <View
-              style={{
-                position: "absolute",
-                top: 6,
-                right: 6,
-                backgroundColor: "rgba(0,0,0,0.7)",
-                borderRadius: 6,
-                paddingVertical: 2,
-                paddingHorizontal: 5,
-              }}
-            >
-              <Text style={{ color: "gold", fontSize: 12 }}>
-                ⭐ {displayRating.toFixed(1)}
-              </Text>
+            <View style={styles.ratingBadge}>
+              <Ionicons name="star" size={12} color="#FFFFFF" />
+              <Text style={styles.ratingText}>{displayRating.toFixed(1)}</Text>
             </View>
           )}
         </TouchableOpacity>
-        <Text style={styles.posterTitle} numberOfLines={1}>
-          {title}
-        </Text>
       </View>
     );
   };
@@ -410,7 +409,8 @@ export default function HomeScreen() {
   });
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000" }}>
+    <View style={{ flex: 1, backgroundColor: "#0A0A0A" }}>
+      <StatusBar barStyle="light-content" />
       {/* Animated Blur HEADER */}
       <Animated.View
         style={[
@@ -463,7 +463,7 @@ export default function HomeScreen() {
 
       {/* INHALT */}
       <Animated.ScrollView
-        style={{ flex: 1, paddingHorizontal: 10, backgroundColor: "#000" }}
+        style={{ flex: 1, paddingHorizontal: 12, backgroundColor: "#0A0A0A" }}
         scrollEventThrottle={16}
         contentContainerStyle={{ paddingTop: 80 }}
         onScroll={Animated.event(
@@ -474,9 +474,9 @@ export default function HomeScreen() {
         {/* 🎬 HERO BANNER (latestMovie) */}
         {latestMovie && (
           <TouchableOpacity
-            activeOpacity={0.85}
+            activeOpacity={0.9}
             onPress={() => navigation.navigate("MovieDetail", { movie: latestMovie })}
-            style={{ marginBottom: 25 }}
+            style={styles.heroContainer}
           >
             <Image
               source={{
@@ -485,45 +485,29 @@ export default function HomeScreen() {
                   latestMovie.cover ||
                   latestMovie.movie_image,
               }}
-              style={{ width: "100%", height: 220, borderRadius: 10 }}
+              style={styles.heroImage}
               resizeMode="cover"
             />
-            <View
-              style={{
-                position: "absolute",
-                bottom: 0,
-                left: 0,
-                right: 0,
-                padding: 16,
-                backgroundColor: "rgba(0,0,0,0.4)",
-                borderBottomLeftRadius: 10,
-                borderBottomRightRadius: 10,
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 4 }}>
-                <Ionicons name="flame-outline" size={16} color="#fff" style={{ marginRight: 6, opacity: 0.9 }} />
-                <Text style={{ color: "#fff", fontSize: 13, opacity: 0.9, fontWeight: "600" }}>
+            <LinearGradient
+              colors={["rgba(0,0,0,0.1)", "rgba(0,0,0,0.65)", "rgba(0,0,0,0.95)"]}
+              style={styles.heroOverlay}
+            />
+            <View style={styles.heroTextContainer}>
+              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6, opacity: 0.9 }}>
+                <Ionicons name="flame-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "600", letterSpacing: 0.3 }}>
                   Neu hinzugefügt
                 </Text>
               </View>
-              <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}>
+              <Text style={styles.heroTitle}>
                 {cleanTitle(latestMovie.name || latestMovie.title || "")}
               </Text>
               <TouchableOpacity
-                style={{
-                  marginTop: 10,
-                  backgroundColor: "#fff",
-                  flexDirection: "row",
-                  alignItems: "center",
-                  borderRadius: 30,
-                  paddingVertical: 8,
-                  paddingHorizontal: 20,
-                  alignSelf: "flex-start",
-                }}
+                style={styles.heroButton}
                 onPress={() => navigation.navigate("MovieDetail", { movie: latestMovie })}
               >
-                <Ionicons name="play" size={18} color="#000" style={{ marginRight: 6 }} />
-                <Text style={{ color: "#000", fontWeight: "700" }}>Jetzt ansehen</Text>
+                <Ionicons name="play" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
+                <Text style={styles.heroButtonText}>Jetzt ansehen</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -531,6 +515,7 @@ export default function HomeScreen() {
         <Text style={styles.sectionTitle}>
           Film Empfehlungen ({languageLabels[language] || language})
         </Text>
+        <View style={styles.sectionDivider} />
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 25 }}>
           <View style={{ flexDirection: "row" }}>
@@ -543,6 +528,7 @@ export default function HomeScreen() {
         <Text style={styles.sectionTitle}>
           Serien Empfehlungen ({languageLabels[language] || language})
         </Text>
+        <View style={styles.sectionDivider} />
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={{ flexDirection: "row" }}>
             {series.length ? series.map((s, i) => renderItem(s, i, "serie")) : (
@@ -552,9 +538,9 @@ export default function HomeScreen() {
         </ScrollView>
 
         <View style={styles.refreshContainer}>
-          <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
-            <Ionicons name="refresh" size={20} color="#000" style={{ marginRight: 8 }} />
-            <Text style={styles.refreshText}>Aktualisieren</Text>
+          <TouchableOpacity onPress={handleRefresh} style={styles.refreshButtonOutline} activeOpacity={0.85}>
+            <Ionicons name="refresh" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Text style={styles.refreshTextMono}>Aktualisieren</Text>
           </TouchableOpacity>
           <Text style={styles.infoText}>
             Sprache ändern unter{" "}
@@ -617,107 +603,144 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center" },
+  center: { flex: 1, backgroundColor: "#0A0A0A", alignItems: "center", justifyContent: "center" },
+
+  // HEADER
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingTop: Platform.OS === "ios" ? 50 : 30,
-    paddingHorizontal: 10,
-    paddingBottom: 10,
+    paddingHorizontal: 14,
+    paddingBottom: 12,
   },
-  logo: { width: 70, height: 40, resizeMode: "contain" },
-  sectionTitle: { color: "#ddd", fontSize: 19, fontWeight: "700", marginBottom: 6 },
+  logo: { width: 74, height: 42, resizeMode: "contain" },
+
+  // TITLES & DIVIDERS
+  sectionTitle: {
+    color: "#EAEAEA",
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+    marginBottom: 10,
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    marginBottom: 14,
+    borderRadius: 1,
+  },
+
+  // REFRESH
   refreshContainer: { marginTop: 40, alignSelf: "center", alignItems: "center" },
-  refreshButton: {
-    backgroundColor: "#fff",
+  refreshButtonOutline: {
+    borderColor: "rgba(255,255,255,0.35)",
+    borderWidth: 1,
     flexDirection: "row",
     alignItems: "center",
     borderRadius: 30,
     paddingVertical: 10,
     paddingHorizontal: 28,
+    backgroundColor: "rgba(255,255,255,0.04)",
   },
-  refreshText: { fontSize: 15, fontWeight: "700", color: "#000" },
-  infoText: { color: "#999", fontSize: 13, marginTop: 8, textAlign: "center" },
+  refreshTextMono: { fontSize: 15, fontWeight: "700", color: "#FFFFFF", letterSpacing: 0.2 },
+  infoText: { color: "#A1A1A1", fontSize: 13, marginTop: 10, textAlign: "center" },
+
+  // OVERLAYS
   overlayContent: { flex: 1, alignItems: "center", justifyContent: "center" },
+
+  // INDEX NUMBER
   indexText: {
     position: "absolute",
     top: -6,
-    left: -15,
+    left: -14,
     zIndex: 10,
-    fontSize: 55,
+    fontSize: 52,
     fontFamily: "Bungee",
-    color: "#fff",
-    opacity: 0.95,
-    textShadowColor: "rgba(0,0,0,0.8)",
-    textShadowRadius: 6,
-    textShadowOffset: { width: 2, height: 2 },
+    color: "rgba(255,255,255,1.00)",
   },
+
+  // POSTER CARD
   posterContainer: {
     width: 140,
-    backgroundColor: "#111",
-    borderRadius: 8,
+    backgroundColor: "#121212",
+    borderRadius: 12,
     overflow: "hidden",
-    padding: 0, // Remove any padding for title area
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.05)",
   },
   posterImage: {
     width: "100%",
     height: 200,
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
+  },
+  posterGradient: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 70,
+  },
+  posterFooter: {
+    position: "absolute",
+    left: 8,
+    right: 8,
+    bottom: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.25)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
   },
   posterTitle: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 13,
-    textAlign: "center",
-    marginTop: 7,
-    maxWidth: 140,
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 12.5,
+    textAlign: "left",
   },
 
-  // ⬇️ NEU: Styles für Verlauf
-  historyItem: { alignItems: "center", marginRight: 16, width: 90 },
-  historyImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 10,
-    backgroundColor: "#111",
-    marginBottom: 6,
-  },
-  historyText: { color: "#ccc", fontSize: 12, textAlign: "center", width: 80 },
-
-  // ⭐ Rating-Badge
+  // RATING BADGE (mono)
   ratingBadge: {
     position: "absolute",
-    top: 6,
-    right: 6,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    top: 8,
+    right: 8,
+    backgroundColor: "rgba(0,0,0,0.65)",
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 2,
-    paddingHorizontal: 5,
+    paddingHorizontal: 6,
     borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    // Professioneller Schatten
+    shadowColor: "#000",
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 3,
   },
   ratingText: {
-    color: "#FFD700",
+    color: "#FFFFFF",
     fontSize: 12,
-    fontWeight: "600",
-    marginLeft: 3,
+    fontWeight: "700",
+    marginLeft: 4,
   },
 
-  // 🎬 HERO BANNER STYLES
+  // HERO
   heroContainer: {
     position: "relative",
     width: "100%",
-    height: 250,
-    marginBottom: 25,
-    borderRadius: 10,
+    height: 230,
+    marginBottom: 28,
+    borderRadius: 14,
     overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+    backgroundColor: "#111",
   },
   heroImage: {
     width: "100%",
     height: "100%",
-    borderRadius: 10,
   },
   heroOverlay: {
     position: "absolute",
@@ -725,24 +748,61 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.45)",
   },
   heroTextContainer: {
     position: "absolute",
-    bottom: 20,
-    left: 20,
-    right: 20,
+    bottom: 18,
+    left: 16,
+    right: 16,
   },
   heroTitle: {
-    color: "#fff",
+    color: "#FFFFFF",
     fontSize: 22,
-    fontWeight: "800",
+    fontWeight: "900",
     marginBottom: 12,
-    textShadowColor: "rgba(0,0,0,0.8)",
-    textShadowRadius: 6,
-    textShadowOffset: { width: 2, height: 2 },
+    letterSpacing: 0.3,
   },
   heroButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.35)",
+  },
+  heroButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+    fontSize: 14.5,
+    letterSpacing: 0.2,
+  },
+
+  // HISTORY
+  historyItem: { alignItems: "center", marginRight: 16, width: 90 },
+  historyImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    backgroundColor: "#131313",
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+  },
+  historyText: { color: "#CFCFCF", fontSize: 12, textAlign: "center", width: 80 },
+
+  // LOADING BADGE
+  ratingTextMono: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "600",
+    marginLeft: 3,
+  },
+
+  // HERO (legacy kept for safety, not used)
+  heroButtonLegacy: {
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
@@ -750,10 +810,5 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 30,
-  },
-  heroButtonText: {
-    color: "#000",
-    fontWeight: "700",
-    fontSize: 15,
   },
 });

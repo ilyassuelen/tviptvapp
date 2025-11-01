@@ -19,6 +19,7 @@ import { useNavigation } from "@react-navigation/native";
 import * as Font from "expo-font";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { buildApiUrl } from "../api/config";
+import { LinearGradient } from "expo-linear-gradient";
 
 function cleanTitle(rawTitle: string): string {
   if (!rawTitle) return "Unbekannt";
@@ -52,6 +53,7 @@ export default function MoviesScreen() {
     const loadFonts = async () => {
       await Font.loadAsync({
         Orbitron: require("../../assets/fonts/Prisma.ttf"),
+        Bungee: require("../../assets/fonts/Bungee.ttf"),
       });
       setFontsLoaded(true);
     };
@@ -179,7 +181,7 @@ export default function MoviesScreen() {
   if (!fontsLoaded || loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#ff5722" />
+        <ActivityIndicator size="large" color="#FFFFFF" />
         <Text style={{ color: "#fff", marginTop: 10 }}>Lade Filme...</Text>
       </View>
     );
@@ -199,6 +201,20 @@ export default function MoviesScreen() {
   const renderMovie = (movie: any, index: number) => {
     const posterUri =
       movie.stream_icon || movie.movie_image || movie.poster || placeholderImage;
+    // Validate posterUri (skip bad images)
+    if (
+      !posterUri ||
+      typeof posterUri !== "string" ||
+      posterUri.trim() === "" ||
+      posterUri.toLowerCase().includes("no_image") ||
+      posterUri.toLowerCase().includes("null") ||
+      posterUri.toLowerCase().includes("missing") ||
+      posterUri.endsWith(".php") ||
+      posterUri.endsWith(".txt") ||
+      posterUri.startsWith("http") === false
+    ) {
+      return null;
+    }
     const title = cleanTitle(
       movie.name || movie.title || movie.stream_display_name || "Unbekannt"
     );
@@ -215,55 +231,33 @@ export default function MoviesScreen() {
     }
 
     return (
-      <TouchableOpacity
-        key={index}
-        style={{
-          width: 140,
-          marginRight: 20,
-          backgroundColor: "#111",
-          borderRadius: 8,
-          overflow: "hidden",
-        }}
-        onPress={() => navigation.navigate("MovieDetail", { movie })}
-      >
-        {/* Rating-Badge */}
-        {displayRating !== null && (
-          <View
-            style={{
-              position: "absolute",
-              top: 6,
-              right: 6,
-              backgroundColor: "rgba(0,0,0,0.7)",
-              borderRadius: 6,
-              paddingVertical: 2,
-              paddingHorizontal: 5,
-              zIndex: 10,
-            }}
-          >
-            <Text style={{ color: "gold", fontSize: 12 }}>
-              ⭐ {displayRating ? displayRating.toFixed(1) : "-"}
+      <View key={index} style={{ marginRight: 18, alignItems: "center" }}>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={() => navigation.navigate("MovieDetail", { movie })}
+          style={styles.posterContainer}
+        >
+          <Image source={{ uri: posterUri }} style={styles.posterImage} resizeMode="cover" />
+          {/* Glass gradient overlay at bottom */}
+          <LinearGradient
+            colors={["transparent", "rgba(0,0,0,0.55)", "rgba(0,0,0,0.85)"]}
+            style={styles.posterGradient}
+          />
+          {/* Title inside image footer */}
+          <View style={styles.posterFooter}>
+            <Text style={styles.posterTitle} numberOfLines={1}>
+              {title}
             </Text>
           </View>
-        )}
-        <Image
-          source={{ uri: posterUri }}
-          style={{
-            width: "100%",
-            height: 180,
-            borderTopLeftRadius: 8,
-            borderTopRightRadius: 8,
-          }}
-          resizeMode="cover"
-        />
-        <View style={{ padding: 8 }}>
-          <Text
-            style={{ color: "#fff", fontWeight: "600", fontSize: 13 }}
-            numberOfLines={1}
-          >
-            {title}
-          </Text>
-        </View>
-      </TouchableOpacity>
+          {/* Rating badge (monochrome) */}
+          {displayRating !== null && (
+            <View style={styles.ratingBadge}>
+              <Ionicons name="star" size={12} color="#FFFFFF" />
+              <Text style={styles.ratingText}>{displayRating.toFixed(1)}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -464,11 +458,72 @@ export default function MoviesScreen() {
   );
 }
 
-const styles = {
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#000",
+const styles = StyleSheet.create({
+  center: { flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center" },
+
+
+  // POSTER CARD
+  posterContainer: {
+    width: 140,
+    backgroundColor: "#121212",
+    borderRadius: 12,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.05)",
   },
-};
+  posterImage: {
+    width: "100%",
+    height: 200,
+  },
+  posterGradient: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 70,
+  },
+  posterFooter: {
+    position: "absolute",
+    left: 8,
+    right: 8,
+    bottom: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.25)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  posterTitle: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+    fontSize: 12.5,
+    textAlign: "left",
+  },
+
+  // RATING BADGE (mono)
+  ratingBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    shadowColor: "#000",
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 3,
+  },
+  ratingText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
+    marginLeft: 4,
+  },
+});
