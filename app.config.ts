@@ -21,7 +21,10 @@ const config: ExpoConfig = {
       foregroundImage: "./assets/logo.png",
       backgroundColor: "#000000",
     },
-    permissions: [],
+    permissions: ["INTERNET", "READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE"],
+  },
+  ios: {
+  bundleIdentifier: "com.ilyassulen.iptvapp",
   },
   plugins: ["expo-font", "expo-video", "expo-audio", "expo-asset"],
   extra: {

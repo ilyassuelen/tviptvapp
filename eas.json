@@ -9,10 +9,12 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk",
-        "gradleCommand": ":app:assembleRelease"
+        "gradleCommand": ":app:assembleRelease",
+        "withoutCredentials": false
       },
       "env": {
-        "EXPO_NO_ANDROID_CACHE": "1"
+        "EXPO_NO_ANDROID_CACHE": "1",
+        "EAS_NO_CACHE": "1"
       }
     },
     "release": {
@@ -20,6 +22,10 @@
       "distribution": "store",
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_NO_ANDROID_CACHE": "1",
+        "EAS_NO_CACHE": "1"
       }
     }
   },
