@@ -28,6 +28,25 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [history, setHistory] = useState<any[]>([]); // ⬅️ NEU
   const [latestMovie, setLatestMovie] = useState<any | null>(null); // ⬅️ NEW
+  const [isFavorite, setIsFavorite] = useState(false);
+  // 🔝 Top 10 by Rating
+  const [topMovies, setTopMovies] = useState<any[]>([]);
+  const [topSeries, setTopSeries] = useState<any[]>([]);
+
+  const toggleFavorite = async () => {
+    try {
+      const key = "favorites_movies";
+      const stored = JSON.parse((await AsyncStorage.getItem(key)) || "[]");
+      const exists = stored.some((m: any) => m.name === latestMovie.name);
+      const newList = exists
+        ? stored.filter((m: any) => m.name !== latestMovie.name)
+        : [...stored, latestMovie];
+      await AsyncStorage.setItem(key, JSON.stringify(newList));
+      setIsFavorite(!exists);
+    } catch (err) {
+      console.error("❌ Fehler beim Speichern des Favoriten:", err);
+    }
+  };
 
   const navigation = useNavigation<any>();
   const spinAnim = useRef(new Animated.Value(0)).current;
@@ -42,15 +61,61 @@ export default function HomeScreen() {
     KU: "Kurdisch",
   };
 
-  const getRandomItems = (arr: any[], count: number) =>
-    [...arr].sort(() => 0.5 - Math.random()).slice(0, count);
+const getRandomItems = (arr: any[], count: number) =>
+  [...arr].sort(() => 0.5 - Math.random()).slice(0, count);
 
-  const getTodayKey = () => new Date().toISOString().split("T")[0];
+// Neue Hilfsfunktion für gültige Poster-URL
+const getValidPoster = (item: any): string => {
+  let img = (item.stream_icon || item.cover || item.movie_image || item.poster || "").trim();
 
-  const extractYearFromTitle = (title: string) => {
-    const match = title?.match(/\((\d{4})\)/);
-    return match ? parseInt(match[1], 10) : null;
-  };
+  // 🧹 Entferne doppelte Slashes NACH dem Protokoll (wichtig für cmc!)
+  img = img.replace(/(^https?:\/\/)(.+)/i, (_, proto, rest) => {
+    return proto + rest.replace(/\/+/g, "/");
+  });
+
+  // Wenn leer oder kaputt
+  if (!img || img.includes("no_image") || img.includes("missing") || img.includes("null")) {
+    // TMDb fallback, falls ID existiert
+    if (item.tmdb && !isNaN(item.tmdb)) {
+      return `https://image.tmdb.org/t/p/w600_and_h900_bestv2/${item.tmdb}.jpg`;
+    }
+    return "https://via.placeholder.com/300x450.png?text=Kein+Bild";
+  }
+
+  // ✅ Wenn cmc-Link → Domain ersetzen & doppelte Slashes fixen
+  if (img.includes("cmc.best-ott.me")) {
+    return img.replace("movies//", "movies/").replace("http://", "https://");
+  }
+
+  // ✅ Wenn line.crystalott.net → immer https verwenden
+  if (img.includes("line.crystalott.net")) {
+    return img.replace("http://", "https://");
+  }
+
+  // ✅ Wenn TMDb-Link → sicherstellen, dass https genutzt wird
+  if (img.includes("image.tmdb.org")) {
+    return img.replace("http://", "https://");
+  }
+
+  // ✅ Wenn bereits korrekter Link
+  if (img.startsWith("http://") || img.startsWith("https://")) {
+    return img;
+  }
+
+  // 🚨 Fallback auf TMDb oder Placeholder
+  if (item.tmdb && !isNaN(item.tmdb)) {
+    return `https://image.tmdb.org/t/p/w600_and_h900_bestv2/${item.tmdb}.jpg`;
+  }
+
+  return "https://via.placeholder.com/300x450.png?text=Kein+Bild";
+};
+
+const getTodayKey = () => new Date().toISOString().split("T")[0];
+
+const extractYearFromTitle = (title: string) => {
+  const match = title?.match(/\((\d{4})\)/);
+  return match ? parseInt(match[1], 10) : null;
+};
 
   const detectLanguages = (data: any[]) => {
     const set = new Set<string>();
@@ -138,28 +203,9 @@ export default function HomeScreen() {
       let filteredSeries = filterByLang(allSeries);
 
       // 🎬 Nur Einträge mit echtem Posterbild behalten (nicht leer oder null)
-      const hasPoster = (item: any) => {
-          const img =
-          item.cover ||
-          item.stream_icon ||
-          item.movie_image ||
-          item.series_image ||
-          item.poster;
-
-          if (!img || typeof img !== "string") return false;
-          const url = img.trim().toLowerCase();
-          if (
-              url === "" ||
-              url.includes("no_image") ||
-              url.includes("null") ||
-              url.includes("missing") ||
-              url.startsWith("http") === false ||
-              url.endsWith(".php") ||
-              url.endsWith(".txt")
-          ) {
-              return false;
-          }
-          return true;
+      const hasPoster = (item: any): boolean => {
+        const url = getValidPoster(item);
+        return url.startsWith("http") && url.indexOf("placeholder.com") === -1;
       };
 
       // Nur Filme/Serien mit gültigem Bild
@@ -188,13 +234,32 @@ export default function HomeScreen() {
         setLatestMovie(null);
       }
 
+      // 🔝 Bestbewertete (10.0) zufällig auswählen
+      const calcRating = (item: any) => {
+        if (item.rating && !isNaN(parseFloat(item.rating))) return parseFloat(item.rating);
+        if (item.rating_5based && !isNaN(parseFloat(item.rating_5based))) return parseFloat(item.rating_5based) * 2;
+        return 0;
+      };
+      const moviesWithPerfectRating = filteredMovies.filter((m) => calcRating(m) === 10.0);
+      const seriesWithPerfectRating = filteredSeries.filter((s) => calcRating(s) === 10.0);
+      const randomMovies = getRandomItems(moviesWithPerfectRating, Math.min(moviesWithPerfectRating.length, 10));
+      const randomSeries = getRandomItems(seriesWithPerfectRating, Math.min(seriesWithPerfectRating.length, 10));
+      setTopMovies(randomMovies);
+      setTopSeries(randomSeries);
+
       // Nur echte Poster verwenden (nach dem Zufall erneut prüfen)
       const validMovies = filteredMovies.filter(m => hasPoster(m));
       const validSeries = filteredSeries.filter(s => hasPoster(s));
 
       // Falls weniger als 10 existieren, fülle nur mit echten auf
-      const selectedMovies = getRandomItems(validMovies, Math.min(validMovies.length, 10));
-      const selectedSeries = getRandomItems(validSeries, Math.min(validSeries.length, 10));
+      const selectedMovies = getRandomItems(
+        validMovies.filter((m) => hasPoster(m)),
+        Math.min(validMovies.length, 10)
+      );
+      const selectedSeries = getRandomItems(
+        validSeries.filter((s) => hasPoster(s)),
+        Math.min(validSeries.length, 10)
+      );
 
       setMovies(selectedMovies);
       setSeries(selectedSeries);
@@ -303,13 +368,6 @@ export default function HomeScreen() {
     t?.replace(/^.*?-\s*/i, "").replace(/\(.*?\)/g, "").trim();
 
   const renderItem = (item: any, i: number, type: "movie" | "serie") => {
-    const img =
-      item.cover ||
-      item.stream_icon ||
-      item.movie_image ||
-      item.series_image ||
-      item.poster;
-
     // 📊 Rating berechnen (robust)
     let displayRating = null;
     if (item.rating !== undefined && item.rating !== null && item.rating !== "") {
@@ -319,21 +377,6 @@ export default function HomeScreen() {
     }
     if (isNaN(displayRating)) {
       displayRating = null;
-    }
-
-    // ❌ Kein gültiges Poster? -> Überspringen
-    if (
-      !img ||
-      typeof img !== "string" ||
-      img.trim() === "" ||
-      img.toLowerCase().includes("no_image") ||
-      img.toLowerCase().includes("null") ||
-      img.toLowerCase().includes("missing") ||
-      img.endsWith(".php") ||
-      img.endsWith(".txt") ||
-      img.startsWith("http") === false
-    ) {
-      return null;
     }
 
     const title =
@@ -353,7 +396,7 @@ export default function HomeScreen() {
           }
           style={styles.posterContainer}
         >
-          <Image source={{ uri: img }} style={styles.posterImage} resizeMode="cover" />
+          <Image source={{ uri: getValidPoster(item) }} style={styles.posterImage} resizeMode="cover" />
           {/* Glass gradient overlay at bottom */}
           <LinearGradient
             colors={["transparent", "rgba(0,0,0,0.55)", "rgba(0,0,0,0.85)"]}
@@ -409,7 +452,7 @@ export default function HomeScreen() {
   });
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#0A0A0A" }}>
+    <View style={{ flex: 1, backgroundColor: "#000000" }}>
       <StatusBar barStyle="light-content" />
       {/* Animated Blur HEADER */}
       <Animated.View
@@ -428,135 +471,160 @@ export default function HomeScreen() {
         ]}
         pointerEvents="box-none"
       >
-        <BlurView
-          intensity={40}
-          tint="dark"
-          style={StyleSheet.absoluteFill}
-        />
         <Animated.View
           style={[
-            StyleSheet.absoluteFill,
-            {
-              backgroundColor: headerOverlayColor,
-            },
+            styles.headerOverlayDark,
+            { opacity: headerBgOpacity },
           ]}
           pointerEvents="none"
         />
-        <Animated.Image
-          source={require("../../assets/logo.png")}
-          style={[
-            styles.logo,
-            {
-              transform: [{ scale: logoScale }],
-            },
-          ]}
-        />
-        <View style={{ flexDirection: "row", gap: 14 }}>
-          <TouchableOpacity onPress={() => navigation.navigate("Search")}>
-            <Ionicons name="search" size={22} color="#fff" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => navigation.navigate("Settings")}>
-            <Ionicons name="settings-outline" size={22} color="#fff" />
-          </TouchableOpacity>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+          <Animated.Image
+            source={require("../../assets/logo.png")}
+            style={[
+              styles.logo,
+              {
+                transform: [{ scale: logoScale }],
+                alignSelf: "flex-start",
+              },
+            ]}
+          />
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate("Search")}
+              style={{
+                backgroundColor: "rgba(255,255,255,0.15)",
+                borderRadius: 20,
+                padding: 8,
+              }}
+            >
+              <Ionicons name="search" size={20} color="#fff" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => navigation.navigate("Settings")}
+              style={{
+                backgroundColor: "rgba(255,255,255,0.15)",
+                borderRadius: 20,
+                padding: 8,
+              }}
+            >
+              <Ionicons name="settings-outline" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
       </Animated.View>
 
       {/* INHALT */}
       <Animated.ScrollView
-        style={{ flex: 1, paddingHorizontal: 12, backgroundColor: "#0A0A0A" }}
+        style={{ flex: 1, backgroundColor: "#000000", paddingHorizontal: 12 }}
         scrollEventThrottle={16}
-        contentContainerStyle={{ paddingTop: 80 }}
+        contentContainerStyle={{ paddingTop: 0 }}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
           { useNativeDriver: false }
         )}
       >
-        {/* 🎬 HERO BANNER (latestMovie) */}
+        {/* 🎬 HERO POSTER LAYOUT */}
         {latestMovie && (
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={() => navigation.navigate("MovieDetail", { movie: latestMovie })}
-            style={styles.heroContainer}
-          >
-            {/* Hero Badge oben links */}
-            <View style={styles.heroBadge}>
-              <Text style={styles.heroBadgeText}>Neu hinzugefügt!</Text>
-            </View>
-            <Animated.Image
-              source={{
-                uri:
-                  latestMovie.stream_icon ||
-                  latestMovie.cover ||
-                  latestMovie.movie_image,
-              }}
-              style={[
-                styles.heroImage,
-                {
-                  transform: [
-                    {
-                      scale: scrollY.interpolate({
-                        inputRange: [-150, 0, 150],
-                        outputRange: [1.2, 1, 1],
-                        extrapolate: "clamp",
-                      }),
-                    },
-                  ],
-                },
-              ]}
+          <View style={styles.heroPosterContainer}>
+            <Image
+              source={{ uri: getValidPoster(latestMovie) }}
+              style={styles.heroPosterImage}
               resizeMode="cover"
+              blurRadius={0}
             />
-
+            {/* Schwarz-Verlauf nach unten */}
             <LinearGradient
               colors={[
                 "rgba(0,0,0,0.0)",
-                "rgba(0,0,0,0.25)",
-                "rgba(0,0,0,0.85)",
-                "rgba(0,0,0,0.95)",
+                "rgba(0,0,0,0.15)",
+                "rgba(0,0,0,0.45)",
+                "rgba(10,10,10,0.95)",
+                "#0A0A0A"
               ]}
-              style={styles.heroOverlay}
+              style={styles.heroPosterGradient}
+              pointerEvents="none"
             />
-
-            <View style={styles.heroTextContainer}>
-              <View style={styles.heroGlass}>
-                <Text style={styles.heroTitle}>
-                  {cleanTitle(latestMovie.name || latestMovie.title || "")}
-                </Text>
+            {/* Header-Overlay bleibt sichtbar */}
+            {/* Action Buttons und Titel */}
+            <View style={styles.heroActionContainer}>
+              <Text
+                style={{
+                  color: "#fff",
+                  fontSize: 26,
+                  fontWeight: "900",
+                  textAlign: "center",
+                  letterSpacing: 0.5,
+                  marginBottom: 18,
+                  textShadowColor: "rgba(0,0,0,0.7)",
+                  textShadowOffset: { width: 0, height: 1 },
+                  textShadowRadius: 8,
+                }}
+                numberOfLines={2}
+              >
+                {cleanTitle(latestMovie.name || latestMovie.title || "")}
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 14, marginTop: 14 }}>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: "#FFFFFF",
+                    flexDirection: "row",
+                    alignItems: "center",
+                    borderRadius: 30,
+                    paddingVertical: 12,
+                    paddingHorizontal: 26,
+                  }}
+                  onPress={() => navigation.navigate("Player", { channels: [latestMovie], currentIndex: 0 })}
+                >
+                  <Ionicons name="play" size={20} color="#000" style={{ marginRight: 8 }} />
+                  <Text style={{ fontSize: 15, fontWeight: "700", color: "#000" }}>Abspielen</Text>
+                </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.heroButton}
-                  onPress={() => navigation.navigate("MovieDetail", { movie: latestMovie })}
+                  onPress={toggleFavorite}
+                  style={{
+                    backgroundColor: "#222",
+                    borderRadius: 50,
+                    padding: 12,
+                  }}
                 >
-                  <Ionicons name="play" size={20} color="#fff" />
-                  <Text style={styles.heroButtonText}>Jetzt ansehen</Text>
+                  <Ionicons
+                    name={isFavorite ? "star" : "star-outline"}
+                    size={22}
+                    color={isFavorite ? "#ff5722" : "#fff"}
+                  />
                 </TouchableOpacity>
               </View>
             </View>
-          </TouchableOpacity>
+          </View>
         )}
-        <Text style={styles.sectionTitle}>
-          Film Empfehlungen ({languageLabels[language] || language})
-        </Text>
-        <View style={styles.sectionDivider} />
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 25 }}>
-          <View style={{ flexDirection: "row" }}>
-            {movies.length ? movies.map((m, i) => renderItem(m, i, "movie")) : (
-              <Text style={{ color: "#aaa" }}>Keine Filme gefunden</Text>
-            )}
-          </View>
-        </ScrollView>
-
-        <Text style={styles.sectionTitle}>
-          Serien Empfehlungen ({languageLabels[language] || language})
-        </Text>
-        <View style={styles.sectionDivider} />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={{ flexDirection: "row" }}>
-            {series.length ? series.map((s, i) => renderItem(s, i, "serie")) : (
-              <Text style={{ color: "#aaa" }}>Keine Serien gefunden</Text>
-            )}
-          </View>
-        </ScrollView>
+        {/* Divider unter Hero */}
+        <View style={styles.heroDivider} />
+        <View style={{ paddingHorizontal: 12 }}>
+          <Text style={styles.sectionTitle}>
+            Film Empfehlungen ({languageLabels[language] || language})
+          </Text>
+          <View style={styles.sectionDivider} />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 25 }}>
+            <View style={{ flexDirection: "row" }}>
+              {movies.length ? movies.map((m, i) => renderItem(m, i, "movie")) : (
+                <Text style={{ color: "#aaa" }}>Keine Filme gefunden</Text>
+              )}
+            </View>
+          </ScrollView>
+          <Text style={styles.sectionTitle}>
+            Serien Empfehlungen ({languageLabels[language] || language})
+          </Text>
+          <View style={styles.sectionDivider} />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={{ flexDirection: "row" }}>
+              {series.length ? series.map((s, i) => renderItem(s, i, "serie")) : (
+                <Text style={{ color: "#aaa" }}>Keine Serien gefunden</Text>
+              )}
+            </View>
+          </ScrollView>
+        </View>
 
         <View style={styles.refreshContainer}>
           <TouchableOpacity onPress={handleRefresh} style={styles.refreshButtonOutline} activeOpacity={0.85}>
@@ -565,7 +633,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
           <Text style={styles.infoText}>
             Sprache ändern unter{" "}
-            <Text style={{ color: "#ff5722" }} onPress={() => navigation.navigate("Settings")}>
+            <Text style={{ color: "#fff" }} onPress={() => navigation.navigate("Settings")}>
               Einstellungen
             </Text>
           </Text>
@@ -573,7 +641,7 @@ export default function HomeScreen() {
 
         {/* 📺 Verlauf */}
         {history.length > 0 && (
-          <View style={{ marginTop: 40 }}>
+          <View style={{ marginTop: 40, paddingHorizontal: 12 }}>
             <Text style={styles.sectionTitle}>Verlauf</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={{ flexDirection: "row" }}>
@@ -603,6 +671,31 @@ export default function HomeScreen() {
             </ScrollView>
           </View>
         )}
+
+        {/* --- Bestbewertete Filme Section --- */}
+        <View style={{ marginTop: 40, paddingHorizontal: 12 }}>
+          <Text style={styles.sectionTitle}>Bestbewertete Filme</Text>
+          <View style={styles.sectionDivider} />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={{ flexDirection: "row" }}>
+              {topMovies.length ? topMovies.map((m, i) => renderItem(m, i, "movie")) : (
+                <Text style={{ color: "#aaa" }}>Keine Top-Filme gefunden</Text>
+              )}
+            </View>
+          </ScrollView>
+        </View>
+        {/* --- Bestbewertete Serien Section --- */}
+        <View style={{ marginTop: 40, paddingHorizontal: 12, marginBottom: 30 }}>
+          <Text style={styles.sectionTitle}>Bestbewertete Serien</Text>
+          <View style={styles.sectionDivider} />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={{ flexDirection: "row" }}>
+              {topSeries.length ? topSeries.map((s, i) => renderItem(s, i, "serie")) : (
+                <Text style={{ color: "#aaa" }}>Keine Top-Serien gefunden</Text>
+              )}
+            </View>
+          </ScrollView>
+        </View>
       </Animated.ScrollView>
 
       {/* 🌫️ Minimalistischer Blur-Ladebildschirm */}
@@ -631,9 +724,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingTop: Platform.OS === "ios" ? 50 : 30,
+    paddingTop: Platform.OS === "ios" ? 45 : 30,
     paddingHorizontal: 14,
-    paddingBottom: 12,
+    paddingBottom: 0,
   },
   logo: { width: 74, height: 42, resizeMode: "contain" },
 
@@ -864,6 +957,83 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
 
+  // HERO POSTER LAYOUT
+  heroPosterContainer: {
+    width: "100%",
+    height: 400,
+    minHeight: 320,
+    maxHeight: 440,
+    aspectRatio: undefined,
+    position: "relative",
+    backgroundColor: "#0A0A0A",
+    justifyContent: "flex-end",
+    overflow: "hidden",
+  },
+  heroPosterImage: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    zIndex: 1,
+  },
+  heroPosterGradient: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    top: 0,
+    zIndex: 2,
+  },
+  heroActionContainer: {
+    zIndex: 3,
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 32,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    paddingHorizontal: 24,
+  },
+  heroPlayButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderRadius: 28,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    marginRight: 8,
+    shadowColor: "#111",
+    shadowOpacity: 0.13,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  heroFavoriteButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(20,20,20,0.78)",
+    borderRadius: 28,
+    paddingVertical: 10,
+    paddingHorizontal: 22,
+    marginLeft: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+    shadowColor: "#000",
+    shadowOpacity: 0.14,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  heroDivider: {
+    height: 1.2,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    marginBottom: 22,
+    marginTop: 0,
+    alignSelf: "stretch",
+    borderRadius: 1,
+    width: "100%",
+  },
   // HERO (legacy kept for safety, not used)
   heroButtonLegacy: {
     flexDirection: "row",
@@ -874,4 +1044,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 30,
   },
-});
+  });
