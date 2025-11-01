@@ -405,7 +405,7 @@ export default function PlayerScreen({ route, navigation }: any) {
                             <View
                               style={{
                                 width: `${(progress / (duration || 1)) * 100}%`,
-                                backgroundColor: "#ff5722",
+                                backgroundColor: "#E50914",
                                 height: "100%",
                               }}
                             />
@@ -422,7 +422,7 @@ export default function PlayerScreen({ route, navigation }: any) {
               {/* Loading/Error Overlay */}
               {loading && (
                 <View style={[styles.overlay]}>
-                  <ActivityIndicator color="#ff5722" size="large" />
+                  <ActivityIndicator color="#E50914" size="large" />
                   <Text style={{ color: "#fff", marginTop: 10 }}>Lade Stream...</Text>
                 </View>
               )}

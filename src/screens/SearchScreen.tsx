@@ -94,7 +94,7 @@ export default function SearchScreen() {
 
       {loading ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator size="large" color="#ff5722" />
+          <ActivityIndicator size="large" color="#E50914" />
           <Text style={{ color: "#fff", marginTop: 10 }}>Suche...</Text>
         </View>
       ) : results.length === 0 && query.trim() ? (
@@ -123,7 +123,7 @@ export default function SearchScreen() {
                 <Image source={{ uri: img }} style={{ width: 90, height: 100, borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }} resizeMode="cover" />
                 <View style={{ flex: 1, padding: 10 }}>
                   <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>{title}</Text>
-                  <Text style={{ color: "#ff5722", fontSize: 13, marginTop: 4 }}>
+                  <Text style={{ color: "#E50914", fontSize: 13, marginTop: 4 }}>
                     {item.type === "movie" ? "🎬 Film" : item.type === "series" ? "📺 Serie" : "🔴 Live"}
                   </Text>
                 </View>

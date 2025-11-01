@@ -36,7 +36,7 @@ const styles = {
     marginRight: 8,
     alignItems: "center",
   },
-  modeButtonActive: { backgroundColor: "#ff5722" },
+  modeButtonActive: { backgroundColor: "#E50914" },
   modeText: { color: "#fff", fontWeight: "600" },
   input: {
     backgroundColor: "#232323",
@@ -47,7 +47,7 @@ const styles = {
     fontSize: 16,
   },
   button: {
-    backgroundColor: "#ff5722",
+    backgroundColor: "#E50914",
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: "center",

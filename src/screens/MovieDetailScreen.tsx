@@ -288,7 +288,7 @@ export default function MovieDetailScreen() {
 
           <TouchableOpacity
             style={{
-              backgroundColor: "#ff5722",
+              backgroundColor: "#E50914",
               flexDirection: "row",
               alignItems: "center",
               borderRadius: 30,
@@ -313,14 +313,14 @@ export default function MovieDetailScreen() {
             <Ionicons
               name={isFavorite ? "star" : "star-outline"}
               size={22}
-              color={isFavorite ? "#ff5722" : "#fff"}
+              color={isFavorite ? "#E50914" : "#fff"}
             />
           </TouchableOpacity>
         </View>
 
         {/* Wikipedia Beschreibung & Cast (unverändert) */}
         {descState.loading ? (
-          <ActivityIndicator size="small" color="#ff5722" />
+          <ActivityIndicator size="small" color="#E50914" />
         ) : (
           <>
             {descState.text && (
@@ -330,7 +330,7 @@ export default function MovieDetailScreen() {
                 </Text>
                 {descState.text.split(" ").length > 25 && (
                   <TouchableOpacity onPress={() => setShowFull(!showFull)}>
-                    <Text style={{ color: "#ff5722", fontSize: 15, textAlign: "center" }}>{showFull ? "Weniger anzeigen" : "…mehr"}</Text>
+                    <Text style={{ color: "#E50914", fontSize: 15, textAlign: "center" }}>{showFull ? "Weniger anzeigen" : "…mehr"}</Text>
                   </TouchableOpacity>
                 )}
               </>

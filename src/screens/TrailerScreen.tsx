@@ -14,13 +14,13 @@ export default function TrailerScreen() {
           startInLoadingState
           renderLoading={() => (
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-              <ActivityIndicator color="#ff5722" />
+              <ActivityIndicator color="#E50914" />
             </View>
           )}
         />
       ) : (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator color="#ff5722" />
+          <ActivityIndicator color="#E50914" />
         </View>
       )}
     </View>
