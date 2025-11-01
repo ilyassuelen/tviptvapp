@@ -1,243 +1,208 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
+  StyleSheet,
   ActivityIndicator,
-  ScrollView,
+  KeyboardAvoidingView,
   Platform,
+  Alert,
+  ScrollView,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Alert } from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import axios from "axios";
-import { setXtreamConnection } from "../store";
-import { normalizeBaseUrl } from "../utils/normalizeBaseUrl";
-import { autoDetectXtreamUrl } from "../api/xtreamApi";
 
-// Styles für das dunkle, schlichte UI
-const styles = {
-  container: { flex: 1, backgroundColor: "#181818", padding: 20 },
-  title: {
-    color: "#fff",
-    fontSize: 22,
-    fontWeight: "700",
-    marginBottom: 20,
-    marginTop: Platform.OS === "ios" ? 60 : 30,
-    textAlign: "left",
-  },
-  modeSwitch: { flexDirection: "row", marginBottom: 20 },
-  modeButton: {
-    flex: 1,
-    backgroundColor: "#232323",
-    padding: 12,
-    borderRadius: 6,
-    marginRight: 8,
-    alignItems: "center",
-  },
-  modeButtonActive: { backgroundColor: "#E50914" },
-  modeText: { color: "#fff", fontWeight: "600" },
-  input: {
-    backgroundColor: "#232323",
-    color: "#fff",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 12,
-    fontSize: 16,
-  },
-  button: {
-    backgroundColor: "#E50914",
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 10,
-  },
-  buttonDisabled: { backgroundColor: "#333" },
-  buttonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  statusLine: { color: "#aaa", marginTop: 20, textAlign: "center" },
-  message: {
-    marginTop: 12,
-    textAlign: "center",
-    fontWeight: "600",
-    fontSize: 15,
-  },
-};
-
-export default function LoginScreen() {
-  const navigation = useNavigation<any>();
-  const [mode, setMode] = useState<"xtream" | "m3u">("xtream");
-  const [loading, setLoading] = useState(false);
-  const [statusLine, setStatusLine] = useState("Warte auf Eingabe...");
-  const [message, setMessage] = useState<string | null>(null);
-  const [baseUrl, setBaseUrl] = useState("http://m3u.best-smarter.me");
+export default function LoginScreen({ navigation }: any) {
+  const [accountTitle, setAccountTitle] = useState("");
+  const [serverUrl, setServerUrl] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [m3uUrl, setM3uUrl] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // Session prüfen
-  useEffect(() => {
-    (async () => {
-      const saved = await AsyncStorage.getItem("iptv_session");
-      if (saved) {
-        console.log("✅ Session vorhanden – Weiterleitung zur MainTabs");
-        navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
-      }
-    })();
-  }, []);
-
-  // Neuer Login-Handler mit autoDetectXtreamUrl
   const handleLogin = async () => {
-    if (!baseUrl || !username || !password) {
-      Alert.alert("Fehler", "Bitte alle Felder ausfüllen.");
+    if (!accountTitle.trim()) {
+      Alert.alert("Fehlender Account-Titel", "Bitte gib einen Namen für diesen Account an.");
+      return;
+    }
+    if (!serverUrl || !username || !password) {
+      Alert.alert("Fehlende Angaben", "Bitte fülle alle Felder aus.");
       return;
     }
 
-    setLoading(true);
     try {
-      console.log("📡 Versuche automatische Erkennung:", baseUrl);
-      const session = await autoDetectXtreamUrl(baseUrl, username, password);
+      setLoading(true);
 
-      if (session?.auth) {
-        console.log("✅ Login erfolgreich, Session gespeichert:", session);
-        await AsyncStorage.setItem("iptv_session", JSON.stringify(session));
-        navigation.reset({
-          index: 0,
-          routes: [{ name: "MainTabs" }],
-        });
-      } else {
-        Alert.alert("Login fehlgeschlagen", "Bitte Zugangsdaten prüfen.");
+      const formattedUrl = serverUrl.endsWith("/")
+        ? serverUrl.slice(0, -1)
+        : serverUrl;
+
+      // IPTV-Verbindung testen
+      const testUrl = `${formattedUrl}/player_api.php?username=${encodeURIComponent(
+        username
+      )}&password=${encodeURIComponent(password)}`;
+      const response = await fetch(testUrl);
+      if (!response.ok) {
+        throw new Error("Fehlerhafte Server-Antwort");
       }
+
+      const data = await response.json();
+      if (!data || !data.user_info || data.user_info.status !== "Active") {
+        throw new Error("Ungültige Login-Daten oder Account nicht aktiv.");
+      }
+
+      // Session speichern
+      const newSession = {
+        serverUrl: formattedUrl,
+        username,
+        password,
+        title: accountTitle.trim(),
+      };
+
+      // Bestehende Accounts laden
+      const stored = await AsyncStorage.getItem("iptv_accounts");
+      let accounts = stored ? JSON.parse(stored) : [];
+
+      // Prüfen, ob Titel bereits existiert
+      const existingIndex = accounts.findIndex(
+        (a: any) => a.title.toLowerCase() === accountTitle.trim().toLowerCase()
+      );
+
+      if (existingIndex >= 0) {
+        // bestehenden Account überschreiben
+        accounts[existingIndex] = newSession;
+      } else {
+        // neuen Account hinzufügen
+        accounts.push(newSession);
+      }
+
+      await AsyncStorage.setItem("iptv_accounts", JSON.stringify(accounts));
+
+      // Diesen Account als aktiv setzen
+      const activeIndex =
+        existingIndex >= 0 ? existingIndex : accounts.length - 1;
+      await AsyncStorage.setItem(
+        "active_account_index",
+        String(activeIndex)
+      );
+
+      // Auch aktuelle Session speichern (für Homescreen-Ladevorgänge)
+      await AsyncStorage.setItem("iptv_session", JSON.stringify(newSession));
+      await AsyncStorage.setItem("active_account_index", "0");
+
+      Alert.alert("✅ Erfolgreich verbunden", `Account „${accountTitle}“ wurde gespeichert.`);
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "MainTabs" }],
+      });
     } catch (err: any) {
-      console.log("❌ Fehler beim Login:", err.message);
-      Alert.alert("Verbindung fehlgeschlagen", "Server oder Zugangsdaten sind ungültig oder nicht erreichbar.");
+      console.error("❌ Login-Fehler:", err);
+      Alert.alert("Fehler", err.message || "Login fehlgeschlagen.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <ScrollView
+    <KeyboardAvoidingView
       style={styles.container}
-      contentContainerStyle={{ paddingBottom: 60 }}
-      keyboardShouldPersistTaps="handled"
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <Text style={styles.title}>🔐 IPTV Login</Text>
-      {/* Umschalter */}
-      <View style={styles.modeSwitch}>
-        <TouchableOpacity
-          style={[
-            styles.modeButton,
-            mode === "xtream" && styles.modeButtonActive,
-          ]}
-          onPress={() => setMode("xtream")}
-        >
-          <Text style={styles.modeText}>Xtream</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.modeButton,
-            mode === "m3u" && styles.modeButtonActive,
-            { marginRight: 0 },
-          ]}
-          onPress={() => setMode("m3u")}
-        >
-          <Text style={styles.modeText}>M3U</Text>
-        </TouchableOpacity>
-      </View>
-      {mode === "xtream" ? (
-        <>
-          <TextInput
-            placeholder="Server URL (z. B. http://deinserver.com)"
-            placeholderTextColor="#777"
-            style={styles.input}
-            value={baseUrl}
-            autoCapitalize="none"
-            autoCorrect={false}
-            onChangeText={setBaseUrl}
-            onEndEditing={() => setBaseUrl((prev) => normalizeBaseUrl(prev))}
-          />
-          <TextInput
-            placeholder="Benutzername"
-            placeholderTextColor="#777"
-            style={styles.input}
-            value={username}
-            autoCapitalize="none"
-            onChangeText={setUsername}
-          />
-          <TextInput
-            placeholder="Passwort"
-            placeholderTextColor="#777"
-            style={styles.input}
-            secureTextEntry
-            value={password}
-            autoCapitalize="none"
-            onChangeText={setPassword}
-          />
-        </>
-      ) : (
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <Text style={styles.title}>IPTV Login</Text>
+
+        {/* 🔸 Account-Titel */}
         <TextInput
-          placeholder="M3U-Link (komplette URL)"
+          placeholder="Account-Titel (z. B. Wohnzimmer)"
           placeholderTextColor="#777"
           style={styles.input}
-          value={m3uUrl}
-          autoCapitalize="none"
-          autoCorrect={false}
-          onChangeText={setM3uUrl}
+          value={accountTitle}
+          onChangeText={setAccountTitle}
         />
-      )}
-      <TouchableOpacity
-        onPress={mode === "xtream" ? handleLogin : async () => {
-          setLoading(true);
-          setMessage(null);
-          setStatusLine("🔗 Verbinde mit Server...");
-          try {
-            if (!m3uUrl) {
-              setMessage("❌ Bitte M3U-Link eingeben");
-              setStatusLine("❌ Eingabefehler");
-              return;
-            }
-            // M3U-Session speichern
-            await AsyncStorage.setItem(
-              "iptv_session",
-              JSON.stringify({ m3uUrl: m3uUrl.trim() })
-            );
-            setMessage("✅ M3U-Link gespeichert");
-            setStatusLine("✅ Login erfolgreich – lade Startseite...");
-            setTimeout(() => {
-              navigation.reset({ index: 0, routes: [{ name: "MainTabs" }] });
-            }, 1000);
-          } catch (err: any) {
-            console.error("❌ Fehler:", err);
-            setMessage("❌ Verbindung fehlgeschlagen – bitte prüfen");
-            setStatusLine("❌ Keine Verbindung");
-          } finally {
-            setLoading(false);
-          }
-        }}
-        style={[
-          styles.button,
-          loading && styles.buttonDisabled,
-        ]}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Verbinden</Text>
-        )}
-      </TouchableOpacity>
-      <Text style={styles.statusLine}>{statusLine}</Text>
-      {message && (
-        <Text
-          style={[
-            styles.message,
-            { color: message.includes("❌") ? "#ff4c4c" : "#00e676" },
-          ]}
+
+        {/* Server, Username, Passwort */}
+        <TextInput
+          placeholder="Serveradresse (z. B. http://example.com:8080)"
+          placeholderTextColor="#777"
+          style={styles.input}
+          value={serverUrl}
+          onChangeText={setServerUrl}
+          autoCapitalize="none"
+        />
+        <TextInput
+          placeholder="Benutzername"
+          placeholderTextColor="#777"
+          style={styles.input}
+          value={username}
+          onChangeText={setUsername}
+          autoCapitalize="none"
+        />
+        <TextInput
+          placeholder="Passwort"
+          placeholderTextColor="#777"
+          style={styles.input}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+
+        <TouchableOpacity
+          style={styles.loginButton}
+          onPress={handleLogin}
+          disabled={loading}
         >
-          {message}
-        </Text>
-      )}
-    </ScrollView>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.loginText}>Anmelden</Text>
+          )}
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#000",
+  },
+  scroll: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 80,
+    paddingHorizontal: 24,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#fff",
+    marginBottom: 40,
+  },
+  input: {
+    width: "100%",
+    backgroundColor: "#1a1a1a",
+    color: "#fff",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    fontSize: 15,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+    marginBottom: 16,
+  },
+  loginButton: {
+    width: "100%",
+    backgroundColor: "#E50914",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  loginText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+});

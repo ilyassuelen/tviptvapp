@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -35,7 +36,7 @@ function MainTabs() {
           paddingTop: Platform.OS === "ios" ? 6 : 0,
           height: Platform.OS === "ios" ? 88 : 60,
         },
-        tabBarActiveTintColor: "#E50914", // 🔴 Netflix-Rot
+        tabBarActiveTintColor: "#E50914",
         tabBarInactiveTintColor: "#9A9A9A",
         tabBarActiveBackgroundColor: "rgba(229,9,20,0.06)", // dezenter Glow beim aktiven Tab
         tabBarIcon: ({ color, size }) => {
@@ -68,9 +69,50 @@ function MainTabs() {
 }
 
 export default function App() {
+  const [initialRoute, setInitialRoute] = useState<"Login" | "MainTabs" | null>(null);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  useEffect(() => {
+    const checkActiveSession = async () => {
+      try {
+        const activeIndex = await AsyncStorage.getItem("active_account_index");
+        const accountsRaw = await AsyncStorage.getItem("iptv_accounts");
+
+        if (activeIndex !== null && accountsRaw) {
+          const accounts = JSON.parse(accountsRaw);
+          const active = accounts[parseInt(activeIndex, 10)];
+          if (active) {
+            await AsyncStorage.setItem("iptv_session", JSON.stringify(active));
+            setInitialRoute("MainTabs");
+            setCheckingSession(false);
+            return;
+          }
+        }
+
+        // Falls keine Session vorhanden
+        setInitialRoute("Login");
+      } catch (err) {
+        console.error("❌ Fehler beim Laden der aktiven Session:", err);
+        setInitialRoute("Login");
+      } finally {
+        setCheckingSession(false);
+      }
+    };
+
+    checkActiveSession();
+  }, []);
+
+  // ⏳ Zeige nichts, bis die Session-Prüfung abgeschlossen ist
+  if (checkingSession || initialRoute === null) {
+    return null; // alternativ: Lade-Spinner einbauen
+  }
+
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false, animation: "fade" }}>
+      <Stack.Navigator
+        initialRouteName={initialRoute}
+        screenOptions={{ headerShown: false, animation: "fade" }}
+      >
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="MainTabs" component={MainTabs} />
         <Stack.Screen name="Search" component={SearchScreen} />
