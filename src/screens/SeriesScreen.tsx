@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
+import { useTVEventHandler } from "react-native";
 import {
   View, Text, Image, ScrollView, TouchableOpacity, ActivityIndicator, Platform,
   TextInput, Animated, FlatList, TouchableWithoutFeedback
@@ -20,8 +21,16 @@ export default function SeriesScreen() {
   const [seriesCategories, setSeriesCategories] = useState<any[]>([]);
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   // Entfernt: searchVisible, setSearchVisible, searchText, setSearchText, searchResults, setSearchResults
   const navigation = useNavigation<any>();
+
+  const tvEventHandler = (evt: any) => {
+    if (evt && evt.eventType) {
+      console.log("📺 TV-Event:", evt.eventType);
+    }
+  };
+  useTVEventHandler(tvEventHandler);
 
   // Entfernt: fadeAnim, slideAnim
   const API_PATH = "/player_api.php";
@@ -161,9 +170,16 @@ export default function SeriesScreen() {
     return (
       <View key={index} style={{ marginRight: 18, alignItems: "center" }}>
         <TouchableOpacity
+          hasTVPreferredFocus={index === 0}
+          focusable={true}
+          onFocus={() => setFocusedIndex(index)}
+          onBlur={() => setFocusedIndex(null)}
           activeOpacity={0.9}
           onPress={() => navigation.navigate("SeriesDetail", { serie })}
-          style={styles.posterContainer}
+          style={[
+            styles.posterContainer,
+            focusedIndex === index && { borderColor: "#E50914", borderWidth: 3 },
+          ]}
         >
           <Image source={{ uri: img }} style={styles.posterImage} resizeMode="cover" />
           <LinearGradient

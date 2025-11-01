@@ -11,10 +11,31 @@ import {
   Animated,
   Easing,
   FlatList,
+  TVEventHandler,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+
+function useTVNavigation(actions: Array<() => void>) {
+  const [focusedIndex, setFocusedIndex] = useState(0);
+  const tvEventHandler = useRef<TVEventHandler | null>(null);
+
+  useEffect(() => {
+    tvEventHandler.current = new TVEventHandler();
+    tvEventHandler.current.enable(null, (cmp, evt) => {
+      if (!evt || !evt.eventType) return;
+      if (evt.eventType === "right") setFocusedIndex((prev) => Math.min(prev + 1, actions.length - 1));
+      if (evt.eventType === "left") setFocusedIndex((prev) => Math.max(prev - 1, 0));
+      if (evt.eventType === "down") setFocusedIndex((prev) => Math.min(prev + 1, actions.length - 1));
+      if (evt.eventType === "up") setFocusedIndex((prev) => Math.max(prev - 1, 0));
+      if (evt.eventType === "select") actions[focusedIndex]?.();
+    });
+    return () => tvEventHandler.current?.disable();
+  }, [focusedIndex, actions]);
+
+  return focusedIndex;
+}
 
 export default function SettingsScreen() {
   const navigation = useNavigation<any>();
@@ -24,6 +45,13 @@ export default function SettingsScreen() {
 
   const [editModalVisible, setEditModalVisible] = useState(false);
   const slideAnim = useRef(new Animated.Value(0)).current;
+
+  const buttonActions = [
+    ...accounts.map((_, i) => () => handleSelectAccount(i)),
+    handleAddAccount,
+    handleLogout,
+  ];
+  const focusedIndex = useTVNavigation(buttonActions);
 
   const openEditModal = () => {
     setEditModalVisible(true);
@@ -169,6 +197,7 @@ export default function SettingsScreen() {
               style={[
                 styles.accountIcon,
                 activeIndex === i && styles.activeAccount,
+                focusedIndex === i && { borderColor: "#E50914", borderWidth: 3 },
               ]}
               onPress={() => handleSelectAccount(i)}
               activeOpacity={0.8}
@@ -185,7 +214,10 @@ export default function SettingsScreen() {
 
           {/* ➕ Account hinzufügen */}
           <TouchableOpacity
-            style={styles.addAccountIcon}
+            style={[
+              styles.addAccountIcon,
+              focusedIndex === accounts.length && { borderWidth: 3, borderColor: "#E50914" },
+            ]}
             onPress={handleAddAccount}
             activeOpacity={0.7}
           >
@@ -220,7 +252,13 @@ export default function SettingsScreen() {
           ))}
         </View>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <TouchableOpacity
+          style={[
+            styles.logoutButton,
+            focusedIndex === accounts.length + 1 && { borderWidth: 3, borderColor: "#fff" },
+          ]}
+          onPress={handleLogout}
+        >
           <Text style={styles.logoutText}>Abmelden</Text>
         </TouchableOpacity>
 

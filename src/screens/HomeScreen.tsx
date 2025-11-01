@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
+import { useTVEventHandler } from "react-native";
 import {
   View,
   Text,
@@ -20,6 +21,16 @@ import { LinearGradient } from "expo-linear-gradient";
 
 export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
+  // TV-Focus state
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+
+  // TV remote event handler
+  const tvEventHandler = (evt: any) => {
+    if (evt && evt.eventType) {
+      console.log("📺 TV-Event:", evt.eventType);
+    }
+  };
+  useTVEventHandler(tvEventHandler);
   const [movies, setMovies] = useState<any[]>([]);
   const [series, setSeries] = useState<any[]>([]);
   const [fontsLoaded, setFontsLoaded] = useState(false);
@@ -432,6 +443,10 @@ const extractYearFromTitle = (title: string) => {
       <View key={i} style={{ marginRight: 18, alignItems: "center" }}>
         <Text style={styles.indexText}>{i + 1}</Text>
         <TouchableOpacity
+          hasTVPreferredFocus={i === 0}
+          focusable={true}
+          onFocus={() => setFocusedIndex(i)}
+          onBlur={() => setFocusedIndex(null)}
           activeOpacity={0.9}
           onPress={() =>
             navigation.navigate(
@@ -439,7 +454,10 @@ const extractYearFromTitle = (title: string) => {
               type === "movie" ? { movie: item } : { serie: item }
             )
           }
-          style={styles.posterContainer}
+          style={[
+            styles.posterContainer,
+            focusedIndex === i && { borderColor: "#E50914", borderWidth: 3 },
+          ]}
         >
           <Image source={{ uri: getValidPoster(item) }} style={styles.posterImage} resizeMode="cover" />
           {/* Glass gradient overlay at bottom */}

@@ -14,6 +14,7 @@ import {
   Platform,
   TouchableWithoutFeedback,
 } from "react-native";
+import { TVEventHandler } from "react-native";
 import { BlurView } from "expo-blur";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { Ionicons } from "@expo/vector-icons";
@@ -280,6 +281,35 @@ export default function PlayerScreen({ route, navigation }: any) {
       }
     };
   }, [selectedIndex]);
+
+  useEffect(() => {
+    const tvHandler = new TVEventHandler();
+    tvHandler.enable(null, (cmp, evt) => {
+      if (!evt || !evt.eventType) return;
+
+      switch (evt.eventType) {
+        case "left":
+          handlePrev();
+          break;
+        case "right":
+          handleNext();
+          break;
+        case "select":
+          togglePlayPause();
+          break;
+        case "back":
+        case "menu": // FireTV oder AppleTV Menü Taste
+          handleBack();
+          break;
+        case "up":
+        case "down":
+          setControlsVisible(true);
+          break;
+      }
+    });
+
+    return () => tvHandler.disable();
+  }, []);
 
   return (
     <View style={styles.container}>

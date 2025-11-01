@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   View, Text, Image, FlatList, TouchableOpacity,
-  Platform, Dimensions
+  Platform, Dimensions, useTVEventHandler
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRoute, useNavigation } from "@react-navigation/native";
@@ -23,6 +23,15 @@ export default function CategoryMoviesScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { categoryName, movies } = route.params || { categoryName: "Unbekannt", movies: [] };
+
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+
+  const tvEventHandler = (evt: any) => {
+    if (evt && evt.eventType) {
+      console.log("📺 TV-Event:", evt.eventType);
+    }
+  };
+  useTVEventHandler(tvEventHandler);
 
   const placeholder = "https://via.placeholder.com/150x200.png?text=Kein+Bild";
 
@@ -95,10 +104,16 @@ export default function CategoryMoviesScreen() {
 
   return (
     <TouchableOpacity
-      key={index}
-      activeOpacity={0.9}
+      hasTVPreferredFocus={index === 0}
+      focusable={true}
+      onFocus={() => setFocusedIndex(index)}
+      onBlur={() => setFocusedIndex(null)}
       onPress={() => navigation.navigate("MovieDetail", { movie: item })}
-      style={styles.posterContainer}
+      style={[
+        styles.posterContainer,
+        focusedIndex === index && { borderColor: "#E50914", borderWidth: 3 },
+      ]}
+      activeOpacity={0.9}
     >
       <Image source={{ uri: img }} style={styles.posterImage} resizeMode="cover" />
       <LinearGradient

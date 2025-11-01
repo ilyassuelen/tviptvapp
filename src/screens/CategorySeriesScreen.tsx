@@ -9,6 +9,7 @@ import {
   Dimensions,
   StyleSheet,
   ActivityIndicator,
+  useTVEventHandler,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRoute, useNavigation } from "@react-navigation/native";
@@ -37,6 +38,15 @@ export default function CategorySeriesScreen() {
   const [sorted, setSorted] = useState(false);
   const [displayedSeries, setDisplayedSeries] = useState(series || []);
   const [fontLoaded, setFontLoaded] = useState(false);
+
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+
+  const tvEventHandler = (evt: any) => {
+    if (evt && evt.eventType) {
+      console.log("📺 TV-Event:", evt.eventType);
+    }
+  };
+  useTVEventHandler(tvEventHandler);
 
   // Font laden wie im HomeScreen
   useEffect(() => {
@@ -109,8 +119,15 @@ export default function CategorySeriesScreen() {
       <TouchableOpacity
         key={index}
         activeOpacity={0.9}
+        hasTVPreferredFocus={index === 0}
+        focusable={true}
+        onFocus={() => setFocusedIndex(index)}
+        onBlur={() => setFocusedIndex(null)}
         onPress={() => navigation.navigate("SeriesDetail", { serie: item })}
-        style={styles.posterContainer}
+        style={[
+          styles.posterContainer,
+          focusedIndex === index && { borderColor: "#E50914", borderWidth: 3 },
+        ]}
       >
         <Image source={{ uri: img }} style={styles.posterImage} resizeMode="cover" />
         <LinearGradient

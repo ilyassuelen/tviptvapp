@@ -14,6 +14,7 @@ import {
   Image,
   ScrollView,
 } from "react-native";
+import { TVEventHandler } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRoute, useNavigation } from "@react-navigation/native";
@@ -154,6 +155,24 @@ function cleanEpisodeTitle(raw: string): string {
     .replace(/[-–]{2,}/g, "-") // Doppelte Bindestriche glätten
     .replace(/\s{2,}/g, " ") // Mehrfache Leerzeichen entfernen
     .trim();
+}
+
+function useTVNavigation(actions: Array<() => void>) {
+  const [focusedIndex, setFocusedIndex] = useState(0);
+  const tvEventHandler = useRef<TVEventHandler | null>(null);
+
+  useEffect(() => {
+    tvEventHandler.current = new TVEventHandler();
+    tvEventHandler.current.enable(null, (cmp, evt) => {
+      if (!evt || !evt.eventType) return;
+      if (evt.eventType === "right") setFocusedIndex((prev) => Math.min(prev + 1, actions.length - 1));
+      if (evt.eventType === "left") setFocusedIndex((prev) => Math.max(prev - 1, 0));
+      if (evt.eventType === "select") actions[focusedIndex]?.();
+    });
+    return () => tvEventHandler.current?.disable();
+  }, [focusedIndex, actions]);
+
+  return focusedIndex;
 }
 
 // 🎞 SeriesDetailScreen
@@ -316,6 +335,13 @@ export default function SeriesDetailScreen() {
   const displayYear = info.year || serie.year || "Unbekannt";
   const displayGenre = info.genre || serie.genre || serie.category_name || "Unbekannt";
 
+  const buttonActions = [
+    () => navigation.navigate("Player", { channels: [serie], currentIndex: 0 }),
+    openTrailer,
+    toggleFavorite,
+  ];
+  const focusedIndex = useTVNavigation(buttonActions);
+
   return (
     <Animated.View
       style={{ flex: 1, backgroundColor: "#000", transform: [{ translateY: panY }], opacity }}
@@ -384,6 +410,8 @@ export default function SeriesDetailScreen() {
               borderRadius: 30,
               paddingVertical: 14,
               paddingHorizontal: 35,
+              borderWidth: focusedIndex === 0 ? 3 : 0,
+              borderColor: focusedIndex === 0 ? "#E50914" : "transparent",
             }}
             onPress={() => navigation.navigate("Player", { channels: [serie], currentIndex: 0 })}
           >
@@ -399,6 +427,8 @@ export default function SeriesDetailScreen() {
               borderRadius: 30,
               paddingVertical: 14,
               paddingHorizontal: 28,
+              borderWidth: focusedIndex === 1 ? 3 : 0,
+              borderColor: focusedIndex === 1 ? "#fff" : "transparent",
             }}
             onPress={openTrailer}
           >
@@ -413,6 +443,8 @@ export default function SeriesDetailScreen() {
               backgroundColor: "#222",
               borderRadius: 50,
               padding: 14,
+              borderWidth: focusedIndex === 2 ? 3 : 0,
+              borderColor: focusedIndex === 2 ? "#E50914" : "transparent",
             }}
           >
             <Ionicons

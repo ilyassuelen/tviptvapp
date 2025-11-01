@@ -12,6 +12,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getXtreamInfo, setXtreamConnection } from "../store";
 import { VLCPlayer } from "react-native-vlc-media-player";
 import { BlurView } from "expo-blur";
+import { useTVEventHandler } from "react-native";
 
 const API_PATH = "/player_api.php";
 
@@ -26,6 +27,16 @@ export default function LiveScreen() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchText, setSearchText] = useState("");
+
+  // TV focus support
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+
+  const tvEventHandler = (evt: any) => {
+    if (evt && evt.eventType) {
+      console.log("📺 TV-Event:", evt.eventType);
+    }
+  };
+  useTVEventHandler(tvEventHandler);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-80)).current;
@@ -277,6 +288,10 @@ export default function LiveScreen() {
             keyExtractor={(_, index) => index.toString()}
             renderItem={({ item, index }) => (
               <TouchableOpacity
+                hasTVPreferredFocus={index === 0}
+                focusable={true}
+                onFocus={() => setFocusedIndex(index)}
+                onBlur={() => setFocusedIndex(null)}
                 onPress={() => {
                   const selected = channels[index];
                   const isLive =
@@ -290,7 +305,10 @@ export default function LiveScreen() {
                     isLive,
                   });
                 }}
-                style={styles.channelItem}
+                style={[
+                  styles.channelItem,
+                  focusedIndex === index && { borderColor: "#E50914", borderWidth: 3 },
+                ]}
                 activeOpacity={0.8}
               >
                 <Image

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   ScrollView,
   Image,
   Platform,
+  TVEventHandler,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
@@ -22,6 +23,25 @@ function cleanTitle(rawTitle: string): string {
     .trim();
 }
 
+function useTVNavigation(onSelect: () => void) {
+  const [focusedIndex, setFocusedIndex] = useState(0);
+  const tvEventHandler = useRef<TVEventHandler | null>(null);
+
+  useEffect(() => {
+    tvEventHandler.current = new TVEventHandler();
+    tvEventHandler.current.enable(null, (cmp, evt) => {
+      if (evt && evt.eventType) {
+        if (evt.eventType === "right") setFocusedIndex((prev) => prev + 1);
+        if (evt.eventType === "left") setFocusedIndex((prev) => Math.max(prev - 1, 0));
+        if (evt.eventType === "select") onSelect();
+      }
+    });
+    return () => tvEventHandler.current?.disable();
+  }, [onSelect]);
+
+  return [focusedIndex, setFocusedIndex] as const;
+}
+
 export default function FavoritesScreen({ navigation }: any) {
   const [category, setCategory] = useState<"TV" | "MOVIES" | "SERIEN">("MOVIES");
   const [searchVisible, setSearchVisible] = useState(false);
@@ -30,6 +50,12 @@ export default function FavoritesScreen({ navigation }: any) {
   const [tvFavorites, setTvFavorites] = useState<any[]>([]);
   const [seriesFavorites, setSeriesFavorites] = useState<any[]>([]);
   const [filtered, setFiltered] = useState<any[]>([]);
+
+  const [focusedIndex, setFocusedIndex] = useTVNavigation(() => {
+    const item = filtered[focusedIndex];
+    if (!item) return;
+    navigation.navigate("MovieDetail", { movie: item });
+  });
 
   // 🔹 Favoriten aus allen Kategorien laden
   useEffect(() => {
@@ -70,6 +96,9 @@ export default function FavoritesScreen({ navigation }: any) {
         width: 140,
         marginRight: 20,
         alignItems: "center",
+        borderWidth: focusedIndex === i ? 3 : 0,
+        borderColor: focusedIndex === i ? "#E50914" : "transparent",
+        borderRadius: 10,
       }}
       onPress={() => navigation.navigate("MovieDetail", { movie: m })}
     >

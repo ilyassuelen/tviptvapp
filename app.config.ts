@@ -4,7 +4,7 @@ const config: ExpoConfig = {
   name: "IPTV App",
   slug: "iptv-app",
   version: "1.0.0",
-  orientation: "default",
+  orientation: "landscape",
   icon: "./assets/logo.png",
   userInterfaceStyle: "dark",
   splash: {
@@ -12,54 +12,23 @@ const config: ExpoConfig = {
     resizeMode: "contain",
     backgroundColor: "#000000",
   },
-
-  ios: {
-    supportsTablet: true,
-    bundleIdentifier: "com.ilyassulen.iptvapp",
-    orientations: ["portrait", "landscape-right", "landscape-left"],
-    infoPlist: {
-      NSAppTransportSecurity: {
-        NSAllowsArbitraryLoads: true,
-        NSAllowsLocalNetworking: true,
-        NSExceptionDomains: {
-          "m3u.best-smarter.me": {
-            NSIncludesSubdomains: true,
-            NSTemporaryExceptionAllowsInsecureHTTPLoads: true,
-            NSTemporaryExceptionMinimumTLSVersion: "TLSv1.0",
-          },
-          "line.crystalott.net": {
-            NSIncludesSubdomains: true,
-            NSTemporaryExceptionAllowsInsecureHTTPLoads: true,
-            NSTemporaryExceptionMinimumTLSVersion: "TLSv1.0",
-          },
-          "87.106.10.34": {
-            NSIncludesSubdomains: true,
-            NSTemporaryExceptionAllowsInsecureHTTPLoads: true,
-          },
-          "192.168.2.101": {
-            NSIncludesSubdomains: true,
-            NSTemporaryExceptionAllowsInsecureHTTPLoads: true,
-          },
-        },
-      },
-    },
-  },
-
   android: {
     package: "com.ilyassulen.iptvapp",
-    // ⚙️ erlaubt HTTP auf Android
+    versionCode: 1,
     usesCleartextTraffic: true,
+    minSdkVersion: 26,
     adaptiveIcon: {
       foregroundImage: "./assets/logo.png",
       backgroundColor: "#000000",
     },
+    permissions: [],
   },
-
-  web: {
-    favicon: "./assets/logo.png",
+  plugins: ["expo-font", "expo-video", "expo-audio", "expo-asset"],
+  extra: {
+    eas: {
+      projectId: "9c6f76b7-adfd-4dcb-9081-2a817c6ad221"
+    }
   },
-
-  plugins: ["expo-font", "expo-video", "expo-audio"],
 };
 
 export default config;

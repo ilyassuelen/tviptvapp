@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
+import { useTVEventHandler } from "react-native";
 import {
   View,
   Text,
@@ -39,6 +40,16 @@ export default function MoviesScreen() {
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const navigation = useNavigation<any>();
+
+  // TV-Fokus-Unterstützung
+  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+
+  const tvEventHandler = (evt: any) => {
+    if (evt && evt.eventType) {
+      console.log("📺 TV-Event:", evt.eventType);
+    }
+  };
+  useTVEventHandler(tvEventHandler);
 
   // Animationen
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -233,9 +244,16 @@ export default function MoviesScreen() {
     return (
       <View key={index} style={{ marginRight: 18, alignItems: "center" }}>
         <TouchableOpacity
+          hasTVPreferredFocus={index === 0}
+          focusable={true}
+          onFocus={() => setFocusedIndex(index)}
+          onBlur={() => setFocusedIndex(null)}
           activeOpacity={0.9}
           onPress={() => navigation.navigate("MovieDetail", { movie })}
-          style={styles.posterContainer}
+          style={[
+            styles.posterContainer,
+            focusedIndex === index && { borderColor: "#E50914", borderWidth: 3 },
+          ]}
         >
           <Image source={{ uri: posterUri }} style={styles.posterImage} resizeMode="cover" />
           {/* Glass gradient overlay at bottom */}

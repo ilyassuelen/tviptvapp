@@ -1,17 +1,42 @@
 import React, { useState } from "react";
 import {
-  View, Text, TextInput, ScrollView, Image, TouchableOpacity, ActivityIndicator, Platform
+  View, Text, TextInput, ScrollView, Image, TouchableOpacity, ActivityIndicator, Platform, TVEventHandler
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getXtreamInfo, setXtreamConnection } from "../store";
 
+function useTVNavigation(actions: Array<() => void>) {
+  const [focusedIndex, setFocusedIndex] = useState(0);
+  const tvEventHandler = React.useRef<TVEventHandler | null>(null);
+
+  React.useEffect(() => {
+    tvEventHandler.current = new TVEventHandler();
+    tvEventHandler.current.enable(null, (cmp, evt) => {
+      if (!evt || !evt.eventType) return;
+      if (evt.eventType === "down") setFocusedIndex((prev) => Math.min(prev + 1, actions.length - 1));
+      if (evt.eventType === "up") setFocusedIndex((prev) => Math.max(prev - 1, 0));
+      if (evt.eventType === "select") actions[focusedIndex]?.();
+    });
+    return () => tvEventHandler.current?.disable();
+  }, [focusedIndex, actions]);
+
+  return focusedIndex;
+}
+
 export default function SearchScreen() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<any[]>([]);
   const navigation = useNavigation<any>();
+
+  const navigationActions = results.map((item) => () => {
+    if (item.type === "movie") navigation.navigate("MovieDetail", { movie: item });
+    else if (item.type === "series") navigation.navigate("SeriesDetail", { serie: item });
+    else if (item.type === "live") navigation.navigate("Player", { channels: [item], currentIndex: 0 });
+  });
+  const focusedIndex = useTVNavigation(navigationActions);
 
   const placeholderImage = "https://via.placeholder.com/140x180.png?text=Kein+Bild";
   const cleanTitle = (t: string) => t?.replace(/^.*?-\s*/i, "").replace(/\(.*?\)/g, "").trim();
@@ -106,21 +131,28 @@ export default function SearchScreen() {
           {results.map((item, index) => {
             const img = item.stream_icon || item.cover || item.series_image || item.movie_image || item.poster || placeholderImage;
             const title = cleanTitle(item.name || item.title || "Unbekannt");
+            const isFocused = focusedIndex === index;
 
             return (
               <TouchableOpacity
                 key={index}
-                onPress={() => {
-                  if (item.type === "movie") navigation.navigate("MovieDetail", { movie: item });
-                  else if (item.type === "series") navigation.navigate("SeriesDetail", { serie: item });
-                  else if (item.type === "live") navigation.navigate("Player", { channels: [item], currentIndex: 0 });
-                }}
+                onPress={navigationActions[index]}
                 style={{
-                  flexDirection: "row", alignItems: "center", backgroundColor: "#111",
-                  borderRadius: 8, marginBottom: 10, overflow: "hidden",
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: isFocused ? "#222" : "#111",
+                  borderRadius: 8,
+                  marginBottom: 10,
+                  overflow: "hidden",
+                  borderWidth: isFocused ? 3 : 0,
+                  borderColor: isFocused ? "#E50914" : "transparent",
                 }}
               >
-                <Image source={{ uri: img }} style={{ width: 90, height: 100, borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }} resizeMode="cover" />
+                <Image
+                  source={{ uri: img }}
+                  style={{ width: 90, height: 100, borderTopLeftRadius: 8, borderBottomLeftRadius: 8 }}
+                  resizeMode="cover"
+                />
                 <View style={{ flex: 1, padding: 10 }}>
                   <Text style={{ color: "#fff", fontSize: 15, fontWeight: "600" }}>{title}</Text>
                   <Text style={{ color: "#E50914", fontSize: 13, marginTop: 4 }}>

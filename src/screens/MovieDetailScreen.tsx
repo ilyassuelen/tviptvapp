@@ -13,6 +13,7 @@ import {
   PanResponder,
   Image,
   ScrollView,
+  TVEventHandler,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -132,6 +133,24 @@ function extractFilmInfo(text?: string): { year?: string; genre?: string } {
   return { year, genre: genreMatch ? genreMatch[1] : undefined };
 }
 
+function useTVNavigation(actions: Array<() => void>) {
+  const [focusedIndex, setFocusedIndex] = useState(0);
+  const tvEventHandler = useRef<TVEventHandler | null>(null);
+
+  useEffect(() => {
+    tvEventHandler.current = new TVEventHandler();
+    tvEventHandler.current.enable(null, (cmp, evt) => {
+      if (!evt || !evt.eventType) return;
+      if (evt.eventType === "right") setFocusedIndex((prev) => Math.min(prev + 1, actions.length - 1));
+      if (evt.eventType === "left") setFocusedIndex((prev) => Math.max(prev - 1, 0));
+      if (evt.eventType === "select") actions[focusedIndex]?.();
+    });
+    return () => tvEventHandler.current?.disable();
+  }, [focusedIndex, actions]);
+
+  return focusedIndex;
+}
+
 // 🎬 Hauptkomponente
 export default function MovieDetailScreen() {
   const route = useRoute<any>();
@@ -236,6 +255,13 @@ export default function MovieDetailScreen() {
   const displayYear = info.year || movie.year || "Unbekannt";
   const displayGenre = info.genre || movie.genre || movie.category_name || "Unbekannt";
 
+  const buttonActions = [
+    () => navigation.navigate("Player", { channels: [movie], currentIndex: 0 }),
+    openTrailer,
+    toggleFavorite,
+  ];
+  const focusedIndex = useTVNavigation(buttonActions);
+
   return (
     <Animated.View style={{ flex: 1, backgroundColor: "#000", transform: [{ translateY: panY }], opacity }} {...panResponder.panHandlers}>
       {/* 🔙 Back */}
@@ -279,6 +305,8 @@ export default function MovieDetailScreen() {
               borderRadius: 30,
               paddingVertical: 14,
               paddingHorizontal: 35,
+              borderWidth: focusedIndex === 0 ? 3 : 0,
+              borderColor: focusedIndex === 0 ? "#E50914" : "transparent",
             }}
             onPress={() => navigation.navigate("Player", { channels: [movie], currentIndex: 0 })}
           >
@@ -294,6 +322,8 @@ export default function MovieDetailScreen() {
               borderRadius: 30,
               paddingVertical: 14,
               paddingHorizontal: 28,
+              borderWidth: focusedIndex === 1 ? 3 : 0,
+              borderColor: focusedIndex === 1 ? "#fff" : "transparent",
             }}
             onPress={openTrailer}
           >
@@ -308,6 +338,8 @@ export default function MovieDetailScreen() {
               backgroundColor: "#222",
               borderRadius: 50,
               padding: 14,
+              borderWidth: focusedIndex === 2 ? 3 : 0,
+              borderColor: focusedIndex === 2 ? "#E50914" : "transparent",
             }}
           >
             <Ionicons

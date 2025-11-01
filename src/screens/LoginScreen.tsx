@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -10,8 +10,27 @@ import {
   Platform,
   Alert,
   ScrollView,
+  TVEventHandler,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
+function useTVNavigation(actions: Array<() => void>) {
+  const [focusedIndex, setFocusedIndex] = useState(0);
+  const tvEventHandler = useRef<TVEventHandler | null>(null);
+
+  useEffect(() => {
+    tvEventHandler.current = new TVEventHandler();
+    tvEventHandler.current.enable(null, (cmp, evt) => {
+      if (!evt || !evt.eventType) return;
+      if (evt.eventType === "right") setFocusedIndex((prev) => Math.min(prev + 1, actions.length - 1));
+      if (evt.eventType === "left") setFocusedIndex((prev) => Math.max(prev - 1, 0));
+      if (evt.eventType === "select") actions[focusedIndex]?.();
+    });
+    return () => tvEventHandler.current?.disable();
+  }, [focusedIndex, actions]);
+
+  return focusedIndex;
+}
 
 export default function LoginScreen({ navigation }: any) {
   const [accountTitle, setAccountTitle] = useState("");
@@ -20,7 +39,10 @@ export default function LoginScreen({ navigation }: any) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async () => {
+  const buttonActions = [handleLogin];
+  const focusedIndex = useTVNavigation(buttonActions);
+
+  async function handleLogin() {
     if (!accountTitle.trim()) {
       Alert.alert("Fehlender Account-Titel", "Bitte gib einen Namen für diesen Account an.");
       return;
@@ -101,7 +123,7 @@ export default function LoginScreen({ navigation }: any) {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
     <KeyboardAvoidingView
@@ -147,7 +169,13 @@ export default function LoginScreen({ navigation }: any) {
         />
 
         <TouchableOpacity
-          style={styles.loginButton}
+          style={[
+            styles.loginButton,
+            {
+              borderWidth: focusedIndex === 0 ? 3 : 0,
+              borderColor: focusedIndex === 0 ? "#E50914" : "transparent",
+            },
+          ]}
           onPress={handleLogin}
           disabled={loading}
         >
