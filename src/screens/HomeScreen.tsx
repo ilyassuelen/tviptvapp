@@ -478,37 +478,58 @@ export default function HomeScreen() {
             onPress={() => navigation.navigate("MovieDetail", { movie: latestMovie })}
             style={styles.heroContainer}
           >
-            <Image
+            {/* Hero Badge oben links */}
+            <View style={styles.heroBadge}>
+              <Text style={styles.heroBadgeText}>Neu hinzugefügt!</Text>
+            </View>
+            <Animated.Image
               source={{
                 uri:
                   latestMovie.stream_icon ||
                   latestMovie.cover ||
                   latestMovie.movie_image,
               }}
-              style={styles.heroImage}
+              style={[
+                styles.heroImage,
+                {
+                  transform: [
+                    {
+                      scale: scrollY.interpolate({
+                        inputRange: [-150, 0, 150],
+                        outputRange: [1.2, 1, 1],
+                        extrapolate: "clamp",
+                      }),
+                    },
+                  ],
+                },
+              ]}
               resizeMode="cover"
             />
+
             <LinearGradient
-              colors={["rgba(0,0,0,0.1)", "rgba(0,0,0,0.65)", "rgba(0,0,0,0.95)"]}
+              colors={[
+                "rgba(0,0,0,0.0)",
+                "rgba(0,0,0,0.25)",
+                "rgba(0,0,0,0.85)",
+                "rgba(0,0,0,0.95)",
+              ]}
               style={styles.heroOverlay}
             />
+
             <View style={styles.heroTextContainer}>
-              <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 6, opacity: 0.9 }}>
-                <Ionicons name="flame-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-                <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "600", letterSpacing: 0.3 }}>
-                  Neu hinzugefügt
+              <View style={styles.heroGlass}>
+                <Text style={styles.heroTitle}>
+                  {cleanTitle(latestMovie.name || latestMovie.title || "")}
                 </Text>
+
+                <TouchableOpacity
+                  style={styles.heroButton}
+                  onPress={() => navigation.navigate("MovieDetail", { movie: latestMovie })}
+                >
+                  <Ionicons name="play" size={20} color="#fff" />
+                  <Text style={styles.heroButtonText}>Jetzt ansehen</Text>
+                </TouchableOpacity>
               </View>
-              <Text style={styles.heroTitle}>
-                {cleanTitle(latestMovie.name || latestMovie.title || "")}
-              </Text>
-              <TouchableOpacity
-                style={styles.heroButton}
-                onPress={() => navigation.navigate("MovieDetail", { movie: latestMovie })}
-              >
-                <Ionicons name="play" size={18} color="#FFFFFF" style={{ marginRight: 8 }} />
-                <Text style={styles.heroButtonText}>Jetzt ansehen</Text>
-              </TouchableOpacity>
             </View>
           </TouchableOpacity>
         )}
@@ -728,56 +749,77 @@ const styles = StyleSheet.create({
 
   // HERO
   heroContainer: {
-    position: "relative",
     width: "100%",
-    height: 230,
-    marginBottom: 28,
-    borderRadius: 14,
+    height: 360,
+    borderRadius: 0,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-    backgroundColor: "#111",
+    marginBottom: 35,
+    backgroundColor: "#000",
   },
   heroImage: {
+    position: "absolute",
     width: "100%",
     height: "100%",
   },
   heroOverlay: {
     position: "absolute",
-    top: 0,
     left: 0,
     right: 0,
     bottom: 0,
+    top: 0,
   },
   heroTextContainer: {
     position: "absolute",
-    bottom: 18,
-    left: 16,
-    right: 16,
+    bottom: 50,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroGlass: {
+    backgroundColor: "rgba(255,255,255,0.06)",
+    paddingVertical: 18,
+    paddingHorizontal: 22,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    shadowColor: "#00A3FF",
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    alignItems: "center",
   },
   heroTitle: {
-    color: "#FFFFFF",
-    fontSize: 22,
+    color: "#fff",
+    fontSize: 26,
     fontWeight: "900",
+    textAlign: "center",
+    letterSpacing: 0.5,
     marginBottom: 12,
-    letterSpacing: 0.3,
+    textShadowColor: "rgba(255,255,255,0.3)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   heroButton: {
     flexDirection: "row",
     alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(0,163,255,0.2)",
     paddingVertical: 10,
-    paddingHorizontal: 18,
-    borderRadius: 28,
+    paddingHorizontal: 24,
+    borderRadius: 30,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.35)",
+    borderColor: "rgba(255,255,255,0.3)",
+    shadowColor: "#00A3FF",
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
   },
   heroButtonText: {
-    color: "#FFFFFF",
-    fontWeight: "800",
-    fontSize: 14.5,
-    letterSpacing: 0.2,
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 15,
+    marginLeft: 8,
+    letterSpacing: 0.3,
   },
 
   // HISTORY
@@ -799,6 +841,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     marginLeft: 3,
+  },
+
+  // HERO BADGE
+  heroBadge: {
+    position: "absolute",
+    top: 20,
+    left: 20,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    zIndex: 10,
+  },
+  heroBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
   },
 
   // HERO (legacy kept for safety, not used)
