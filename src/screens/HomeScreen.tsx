@@ -66,50 +66,95 @@ export default function HomeScreen() {
 const getRandomItems = (arr: any[], count: number) =>
   [...arr].sort(() => 0.5 - Math.random()).slice(0, count);
 
-// Neue Hilfsfunktion für gültige Poster-URL
+// Neue Hilfsfunktion für gültige Poster-URL (robuster Normalizer für TMDb & CMC)
 const getValidPoster = (item: any): string => {
-  let img = (item.stream_icon || item.cover || item.movie_image || item.poster || "").trim();
+  // Kandidatenfelder prüfen
+  let raw =
+    (item?.stream_icon ||
+      item?.cover ||
+      item?.movie_image ||
+      item?.poster ||
+      "") + "";
 
-  // 🧹 Entferne doppelte Slashes NACH dem Protokoll (wichtig für cmc!)
-  img = img.replace(/(^https?:\/\/)(.+)/i, (_, proto, rest) => {
-    return proto + rest.replace(/\/+/g, "/");
-  });
+  const PLACEHOLDER = "https://via.placeholder.com/300x450.png?text=Kein+Bild";
+  const EXT_RX = /\.(jpg|jpeg|png|webp)$/i;
 
-  // Wenn leer oder kaputt
-  if (!img || img.includes("no_image") || img.includes("missing") || img.includes("null")) {
-    // TMDb fallback, falls ID existiert
-    if (item.tmdb && !isNaN(item.tmdb)) {
+  // 1) Quick bailouts
+  if (!raw || /no_image|null|missing/i.test(raw)) {
+    if (item?.tmdb && !isNaN(Number(item.tmdb))) {
       return `https://image.tmdb.org/t/p/w600_and_h900_bestv2/${item.tmdb}.jpg`;
     }
-    return "https://via.placeholder.com/300x450.png?text=Kein+Bild";
+    return PLACEHOLDER;
   }
 
-  // ✅ Wenn cmc-Link → Domain ersetzen & doppelte Slashes fixen
-  if (img.includes("cmc.best-ott.me")) {
-    return img.replace("movies//", "movies/").replace("http://", "https://");
+  // 2) JSON-escaped Slashes wie "http:\/\/" oder doppelte Slashes im Pfad glätten
+  let url = raw
+    .trim()
+    // aus "http:\/\/" → "http://"
+    .replace(/:\\\//g, "://")
+    .replace(/\\\//g, "/");
+
+  // 3) Fehlendes Protokoll handlen (//image.tmdb.org/...)
+  if (url.startsWith("//")) {
+    url = "https:" + url;
+  }
+  // 4) Fehlende Domain bei TMDb ergänzen (t/p/... )
+  if (/^\/?t\/p\//i.test(url) || /^image\.tmdb\.org/i.test(url)) {
+    // Falls nur Pfad übergeben wurde → komplette TMDb-URL bauen
+    if (!/^https?:\/\//i.test(url)) {
+      url = "https://image.tmdb.org/" + url.replace(/^\/+/, "");
+    }
   }
 
-  // ✅ Wenn line.crystalott.net → immer https verwenden
-  if (img.includes("line.crystalott.net")) {
-    return img.replace("http://", "https://");
+  // 5) Protokoll/Host herauslösen und Pfad doppelte Slashes reduzieren (ohne '://')
+  //    Beispiel: https://image.tmdb.org//t//p//w600... → https://image.tmdb.org/t/p/w600...
+  const m = url.match(/^(https?:\/\/[^/]+)(\/.*)?$/i);
+  if (m) {
+    let host = m[1];
+    let path = (m[2] || "/").replace(/\/{2,}/g, "/");
+
+    // 6) Domain-spezifische Regeln
+    const isTMDB = /image\.tmdb\.org$/i.test(host);
+    const isCMC = /cmc\.best-ott\.me(?::8080)?$/i.test(host);
+
+    // TMDb immer https
+    if (isTMDB) {
+      host = host.replace(/^http:\/\//i, "https://");
+    }
+
+    // CMC auf Port 8080 i.d.R. nur über http erreichbar → NICHT zwangsweise auf https heben
+    if (isCMC && /:8080$/i.test(host)) {
+      host = host.replace(/^https:\/\//i, "http://"); // sicherstellen, dass wir http benutzen, falls vorher https war
+    }
+
+    // 🔁 Proxy-Lösung über weserv.nl für HTTP-CMC-Server (HTTPS-Bilder über Proxy)
+    if (isCMC) {
+      const proxied = `https://images.weserv.nl/?url=${encodeURIComponent(host.replace(/^https?:\/\//, "") + path)}`;
+      return proxied;
+    }
+
+    url = host + path;
   }
 
-  // ✅ Wenn TMDb-Link → sicherstellen, dass https genutzt wird
-  if (img.includes("image.tmdb.org")) {
-    return img.replace("http://", "https://");
+  // 7) Wenn immer noch kein Protokoll vorhanden (sehr selten), https annehmen – außer CMC-8080
+  if (!/^https?:\/\//i.test(url)) {
+    if (/^cmc\.best-ott\.me(?::8080)?\//i.test(url)) {
+      url = "http://" + url; // Port 8080 → http
+    } else {
+      url = "https://" + url;
+    }
   }
 
-  // ✅ Wenn bereits korrekter Link
-  if (img.startsWith("http://") || img.startsWith("https://")) {
-    return img;
+  // 8) Finale Validierung: Dateiendungen
+  if (!EXT_RX.test(url)) {
+    // Versuche TMDb-Fallback falls vorhanden
+    if (item?.tmdb && !isNaN(Number(item.tmdb))) {
+      return `https://image.tmdb.org/t/p/w600_and_h900_bestv2/${item.tmdb}.jpg`;
+    }
+    return PLACEHOLDER;
   }
 
-  // 🚨 Fallback auf TMDb oder Placeholder
-  if (item.tmdb && !isNaN(item.tmdb)) {
-    return `https://image.tmdb.org/t/p/w600_and_h900_bestv2/${item.tmdb}.jpg`;
-  }
-
-  return "https://via.placeholder.com/300x450.png?text=Kein+Bild";
+  return url;
 };
 
 const getTodayKey = () => new Date().toISOString().split("T")[0];
