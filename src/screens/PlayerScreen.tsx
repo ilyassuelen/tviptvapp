@@ -240,6 +240,20 @@ export default function PlayerScreen({ route, navigation }: any) {
     setDuration(0);
   }, [currentUrl]);
 
+  // --- Save to history ---
+  const saveToHistory = async (item) => {
+    try {
+      const key = "stream_history";
+      const stored = JSON.parse((await AsyncStorage.getItem(key)) || "[]");
+      const filtered = stored.filter((x) => x.stream_id !== item.stream_id);
+      const updated = [item, ...filtered].slice(0, 30);
+      await AsyncStorage.setItem(key, JSON.stringify(updated));
+      console.log("✅ Verlauf aktualisiert:", item.name);
+    } catch (err) {
+      console.error("❌ Fehler beim Speichern des Verlaufs:", err);
+    }
+  };
+
   // Handler for VLC events
   const handleVlcProgress = (e: any) => {
     // e.currentTime, e.duration (in seconds)
@@ -257,6 +271,15 @@ export default function PlayerScreen({ route, navigation }: any) {
       if (hideTimeout.current) clearTimeout(hideTimeout.current);
     };
   }, [controlsVisible]);
+
+  // --- Save playback to history when channel changes/unmounts ---
+  useEffect(() => {
+    return () => {
+      if (channels && channels[selectedIndex]) {
+        saveToHistory(channels[selectedIndex]);
+      }
+    };
+  }, [selectedIndex]);
 
   return (
     <View style={styles.container}>

@@ -141,7 +141,7 @@ export default function SeriesScreen() {
   if (!fontsLoaded || loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#ff5722" />
+        <ActivityIndicator size="large" color="#E50914" />
         <Text style={{ color: "#fff", marginTop: 10 }}>Lade Serien...</Text>
       </View>
     );
@@ -256,7 +256,7 @@ export default function SeriesScreen() {
                   categoryName: cat.category_name, series: cat.series,
                 })}
               >
-                <Text style={{ color: "#ff5722", fontWeight: "600" }}>Mehr ›</Text>
+                <Text style={{ color: "#E50914", fontWeight: "600" }}>Mehr ›</Text>
               </TouchableOpacity>
             </View>
 

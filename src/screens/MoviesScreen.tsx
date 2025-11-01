@@ -336,7 +336,7 @@ export default function MoviesScreen() {
                   })
                 }
               >
-                <Text style={{ color: "#ff5722", fontWeight: "600" }}>
+                <Text style={{ color: "#E50914", fontWeight: "600" }}>
                   Mehr ›
                 </Text>
               </TouchableOpacity>

@@ -51,6 +51,8 @@ export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const spinAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  // Progress bar animation for refreshing overlay
+  const progressAnim = useRef(new Animated.Value(0)).current;
   // For animated header
   const scrollY = useRef(new Animated.Value(0)).current;
 
@@ -291,40 +293,38 @@ const extractYearFromTitle = (title: string) => {
     }
   };
 
+  const clearHistory = async () => {
+    try {
+      await AsyncStorage.removeItem("stream_history");
+      setHistory([]);
+      console.log("🧹 Verlauf wurde geleert");
+    } catch (err) {
+      console.error("❌ Fehler beim Löschen des Verlaufs:", err);
+    }
+  };
+
   const handleRefresh = async () => {
     setRefreshing(true);
-    Animated.loop(
-      Animated.timing(spinAnim, {
-        toValue: 1,
-        duration: 1500,
-        useNativeDriver: true,
-      })
-    ).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.2,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
+    // No animation for progress bar here; handled in useEffect below
     await AsyncStorage.removeItem("daily_recommendations");
     await loadRecommendations(true);
-
-    spinAnim.stopAnimation();
-    pulseAnim.stopAnimation();
-
     // Verlauf frisch laden
     await loadHistory(); // ⬅️ NEU
   };
+
+  // Animate progress bar when refreshing starts
+  useEffect(() => {
+    if (refreshing) {
+      progressAnim.setValue(0);
+      Animated.timing(progressAnim, {
+        toValue: 1,
+        duration: 2000,
+        useNativeDriver: false,
+      }).start();
+    } else {
+      progressAnim.setValue(0);
+    }
+  }, [refreshing]);
 
   useEffect(() => {
     const init = async () => {
@@ -534,6 +534,33 @@ const extractYearFromTitle = (title: string) => {
               resizeMode="cover"
               blurRadius={0}
             />
+            {/* Neu hinzugefügt Badge direkt über dem Filmtitel */}
+            <View
+              style={{
+                position: "absolute",
+                bottom: 180,
+                alignSelf: "center",
+                backgroundColor: "#E50914",
+                paddingVertical: 6,
+                paddingHorizontal: 14,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: "rgba(255,255,255,0.3)",
+                zIndex: 10,
+              }}
+            >
+              <Text
+                style={{
+                  color: "#fff",
+                  fontWeight: "800",
+                  fontSize: 13,
+                  letterSpacing: 0.5,
+                  textTransform: "uppercase",
+                }}
+              >
+                Neu hinzugefügt
+              </Text>
+            </View>
             {/* Schwarz-Verlauf nach unten */}
             <LinearGradient
               colors={[
@@ -541,7 +568,7 @@ const extractYearFromTitle = (title: string) => {
                 "rgba(0,0,0,0.15)",
                 "rgba(0,0,0,0.45)",
                 "rgba(10,10,10,0.95)",
-                "#0A0A0A"
+                "#0A0A0A",
               ]}
               style={styles.heroPosterGradient}
               pointerEvents="none"
@@ -592,7 +619,7 @@ const extractYearFromTitle = (title: string) => {
                   <Ionicons
                     name={isFavorite ? "star" : "star-outline"}
                     size={22}
-                    color={isFavorite ? "#ff5722" : "#fff"}
+                    color={isFavorite ? "#E50914" : "#fff"}
                   />
                 </TouchableOpacity>
               </View>
@@ -642,7 +669,12 @@ const extractYearFromTitle = (title: string) => {
         {/* 📺 Verlauf */}
         {history.length > 0 && (
           <View style={{ marginTop: 40, paddingHorizontal: 12 }}>
-            <Text style={styles.sectionTitle}>Verlauf</Text>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <Text style={styles.sectionTitle}>Verlauf</Text>
+              <TouchableOpacity onPress={clearHistory}>
+                <Text style={{ color: "#888", fontSize: 13, textDecorationLine: "underline" }}>Verlauf leeren</Text>
+              </TouchableOpacity>
+            </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={{ flexDirection: "row" }}>
                 {history.map((item, i) => (
@@ -702,13 +734,28 @@ const extractYearFromTitle = (title: string) => {
       {refreshing && (
         <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill}>
           <View style={styles.overlayContent}>
-            <Animated.View
-              style={{
-                transform: [{ rotate: spin }, { scale: pulseAnim }],
-              }}
-            >
-              <Ionicons name="cog-outline" size={70} color="#fff" />
-            </Animated.View>
+            {/* Animated horizontal progress bar */}
+            <View style={{
+              width: "80%",
+              height: 8,
+              backgroundColor: "rgba(255,255,255,0.12)",
+              borderRadius: 8,
+              overflow: "hidden",
+              marginTop: 0,
+              marginBottom: 0,
+            }}>
+              <Animated.View
+                style={{
+                  height: 8,
+                  backgroundColor: "#fff",
+                  borderRadius: 8,
+                  width: progressAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: ["0%", "100%"],
+                  }),
+                }}
+              />
+            </View>
           </View>
         </BlurView>
       )}

@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   subHeader: {
-    color: "#ff5722",
+    color: "#E50914",
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 10,
@@ -112,8 +112,8 @@ const styles = StyleSheet.create({
     margin: 5,
   },
   langButtonActive: {
-    backgroundColor: "#ff5722",
-    borderColor: "#ff5722",
+    backgroundColor: "#E50914",
+    borderColor: "#E50914",
   },
   langText: {
     color: "#ccc",
@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   logoutButton: {
-    backgroundColor: "#ff5722",
+    backgroundColor: "#E50914",
     paddingVertical: 12,
     paddingHorizontal: 30,
     borderRadius: 8,

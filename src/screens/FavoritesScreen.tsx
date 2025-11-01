@@ -152,7 +152,7 @@ export default function FavoritesScreen({ navigation }: any) {
               key={t}
               onPress={() => setCategory(t as any)}
               style={{
-                backgroundColor: category === t ? "#ff5722" : "#222",
+                backgroundColor: category === t ? "#E50914" : "#222",
                 paddingVertical: 8,
                 paddingHorizontal: 20,
                 borderRadius: 20,

@@ -151,7 +151,7 @@ export default function LiveScreen() {
   if (loading || !fontsLoaded) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#ff5722" />
+        <ActivityIndicator size="large" color="#E50914" />
         <Text style={{ color: "#fff", marginTop: 10 }}>Lade Kategorien...</Text>
       </View>
     );
@@ -267,7 +267,7 @@ export default function LiveScreen() {
         </Animated.View>
         {loadingChannels ? (
           <View style={styles.center}>
-            <ActivityIndicator size="large" color="#ff5722" />
+            <ActivityIndicator size="large" color="#E50914" />
             <Text style={{ color: "#fff", marginTop: 10 }}>Lade Sender...</Text>
           </View>
         ) : (
@@ -468,7 +468,7 @@ export default function LiveScreen() {
               onPress={() => loadChannels(cat.category_id ?? cat.category_name)}
               activeOpacity={0.8}
             >
-              <Ionicons name="tv-outline" size={22} color="#ff5722" style={{ marginRight: 10 }} />
+              <Ionicons name="tv-outline" size={22} color="#E50914" style={{ marginRight: 10 }} />
               <Text style={styles.categoryName}>{cat.category_name}</Text>
             </TouchableOpacity>
           ))
@@ -575,7 +575,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: Platform.OS === "ios" ? 44 : 24,
   },
-  retryButton: { marginTop: 16, backgroundColor: "#ff5722", paddingHorizontal: 20, paddingVertical: 8, borderRadius: 6 },
+  retryButton: { marginTop: 16, backgroundColor: "#E50914", paddingHorizontal: 20, paddingVertical: 8, borderRadius: 6 },
   categoryItem: {
     flexDirection: "row", alignItems: "center", marginVertical: 6, marginHorizontal: 2,
     paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.03)",

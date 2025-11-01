@@ -30,12 +30,14 @@ function MainTabs() {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: "#000",
-          borderTopColor: "#111",
+          backgroundColor: "#000000",
+          borderTopColor: "rgba(255,255,255,0.08)",
           paddingTop: Platform.OS === "ios" ? 6 : 0,
+          height: Platform.OS === "ios" ? 88 : 60,
         },
-        tabBarActiveTintColor: "#ff5722",
-        tabBarInactiveTintColor: "#888",
+        tabBarActiveTintColor: "#E50914", // 🔴 Netflix-Rot
+        tabBarInactiveTintColor: "#9A9A9A",
+        tabBarActiveBackgroundColor: "rgba(229,9,20,0.06)", // dezenter Glow beim aktiven Tab
         tabBarIcon: ({ color, size }) => {
           const map: Record<string, keyof typeof Ionicons.glyphMap> = {
             Home: "home",
@@ -47,6 +49,11 @@ function MainTabs() {
           };
           const name = map[route.name] ?? "ellipse-outline";
           return <Ionicons name={name} size={size} color={color} />;
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: "600",
+          marginBottom: Platform.OS === "ios" ? 2 : 4,
         },
       })}
     >
