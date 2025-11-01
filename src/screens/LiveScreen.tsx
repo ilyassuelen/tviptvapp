@@ -388,73 +388,29 @@ export default function LiveScreen() {
   }
 
   // Kategorienübersicht (wie bei dir)
-  // Header Animation values for overview
-  const headerHeight = scrollY.interpolate({
-    inputRange: [0, HEADER_SCROLL_DISTANCE],
-    outputRange: [HEADER_MAX_HEIGHT, HEADER_MIN_HEIGHT],
-    extrapolate: "clamp",
-  });
-  const titleSize = scrollY.interpolate({
-    inputRange: [0, HEADER_SCROLL_DISTANCE],
-    outputRange: [TITLE_MAX_SIZE, TITLE_MIN_SIZE],
-    extrapolate: "clamp",
-  });
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [0, HEADER_SCROLL_DISTANCE / 2, HEADER_SCROLL_DISTANCE],
-    outputRange: [1, 0.96, 0.93],
-    extrapolate: "clamp",
-  });
-  // Interpolated background color for blur overlay: rgba(0,0,0,0) -> rgba(0,0,0,0.6)
-  const headerBgColor = scrollY.interpolate({
-    inputRange: [0, HEADER_SCROLL_DISTANCE],
-    outputRange: ["rgba(0,0,0,0)", "rgba(0,0,0,0.6)"],
-    extrapolate: "clamp",
-  });
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" />
-      {/* Animated Header */}
-      <Animated.View
-        style={[
-          styles.animatedHeader,
-          {
-            height: headerHeight,
-            opacity: headerOpacity,
-          },
-        ]}
+      {/* Fester Header wie SeriesScreen */}
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          //paddingTop: Platform.OS === "ios" ? 0 : 10,
+          paddingBottom: 10,
+          paddingHorizontal: 14,
+          backgroundColor: "#000",
+        }}
       >
-        <Animated.View
-          style={[
-            StyleSheet.absoluteFill,
-            { backgroundColor: headerBgColor },
-          ]}
-        >
-          <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFill} />
-        </Animated.View>
-        <View style={styles.headerContent}>
-          <Animated.Text
-            style={{
-              color: "#fff",
-              fontSize: titleSize,
-              fontWeight: "700",
-              fontFamily: "Orbitron",
-              letterSpacing: 1.2,
-            }}
-          >
-            LIVE TV
-          </Animated.Text>
-          <TouchableOpacity onPress={toggleSearch}>
-            <Ionicons name={searchVisible ? "close" : "search"} size={22} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </Animated.View>
-      <Animated.ScrollView
-        contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 20, paddingTop: HEADER_MAX_HEIGHT - 12 }}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false }
-        )}
-        scrollEventThrottle={16}
+        <Text style={{ color: "#fff", fontSize: 20, fontWeight: "700" }}>Live TV</Text>
+      </View>
+      <ScrollView
+        contentContainerStyle={{
+          paddingHorizontal: 12,
+          paddingBottom: 20,
+          paddingTop: 88, // HEADER_MAX_HEIGHT - 12 aus Animated.ScrollView (100-12=88)
+        }}
       >
         {categories.length === 0 ? (
           <Text style={{ color: "#888", textAlign: "center", marginTop: 20 }}>
@@ -473,7 +429,7 @@ export default function LiveScreen() {
             </TouchableOpacity>
           ))
         )}
-      </Animated.ScrollView>
+      </ScrollView>
       {/* Suchoverlay wie bei dir */}
       {searchVisible && (
         <Animated.View

@@ -20,13 +20,10 @@ export default function SeriesScreen() {
   const [seriesCategories, setSeriesCategories] = useState<any[]>([]);
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchVisible, setSearchVisible] = useState(false);
-  const [searchText, setSearchText] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  // Entfernt: searchVisible, setSearchVisible, searchText, setSearchText, searchResults, setSearchResults
   const navigation = useNavigation<any>();
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(-80)).current;
+  // Entfernt: fadeAnim, slideAnim
   const API_PATH = "/player_api.php";
 
   useEffect(() => {
@@ -102,41 +99,7 @@ export default function SeriesScreen() {
     return info!;
   };
 
-  const toggleSearch = () => {
-    if (searchVisible) {
-      Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-        Animated.timing(slideAnim, { toValue: -80, duration: 200, useNativeDriver: true }),
-      ]).start(() => {
-        setSearchVisible(false);
-        setSearchText("");
-        setSearchResults([]);
-      });
-    } else {
-      setSearchVisible(true);
-      Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
-        Animated.timing(slideAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-      ]).start();
-    }
-  };
-
-  const handleSearch = (text: string) => {
-    setSearchText(text);
-    if (!text.trim()) {
-      setSearchResults([]);
-      return;
-    }
-    const lower = text.toLowerCase();
-    const results: any[] = [];
-    seriesCategories.forEach((cat) => {
-      cat.series.forEach((serie: any) => {
-        const rawTitle = serie.name || serie.title || serie.stream_display_name || "";
-        if (rawTitle.toLowerCase().includes(lower)) results.push(serie);
-      });
-    });
-    setSearchResults(results);
-  };
+  // Entfernt: toggleSearch, handleSearch
 
   if (!fontsLoaded || loading) {
     return (
@@ -228,17 +191,16 @@ export default function SeriesScreen() {
       {/* HEADER */}
       <View
         style={{
-          flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-          backgroundColor: "#000", paddingTop: Platform.OS === "ios" ? 45 : 25,
-          paddingBottom: 10, paddingHorizontal: 14, zIndex: 100,
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+          paddingTop: Platform.OS === "ios" ? 50 : 30,
+          paddingBottom: 10,
+          paddingHorizontal: 14,
+          backgroundColor: "#000",
         }}
       >
-        <Text style={{ color: "#fff", fontSize: 20, fontWeight: "700", fontFamily: "Orbitron" }}>
-          Series
-        </Text>
-        <TouchableOpacity onPress={toggleSearch}>
-          <Ionicons name={searchVisible ? "close" : "search"} size={22} color="#fff" />
-        </TouchableOpacity>
+        <Text style={{ color: "#fff", fontSize: 20, fontWeight: "700" }}>Serien</Text>
       </View>
 
       {/* Kategorien */}
@@ -271,67 +233,7 @@ export default function SeriesScreen() {
         ))}
       </ScrollView>
 
-      {/* Such-Overlay */}
-      {searchVisible && (
-        <Animated.View
-          style={{
-            position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.85)", opacity: fadeAnim, zIndex: 200,
-          }}
-        >
-          <TouchableWithoutFeedback onPress={toggleSearch}>
-            <View style={{ flex: 1 }} />
-          </TouchableWithoutFeedback>
-
-          <Animated.View
-            style={{
-              position: "absolute", top: Platform.OS === "ios" ? 70 : 50, left: 20, right: 20,
-              transform: [{ translateY: slideAnim }],
-            }}
-          >
-            <TextInput
-              style={{
-                backgroundColor: "rgba(255,255,255,0.08)", borderRadius: 12,
-                paddingHorizontal: 15, paddingVertical: 10, color: "#fff", fontSize: 16,
-              }}
-              placeholder="Serie suchen..."
-              placeholderTextColor="#aaa"
-              value={searchText}
-              onChangeText={handleSearch}
-              autoFocus
-            />
-          </Animated.View>
-
-          <FlatList
-            data={searchResults}
-            keyExtractor={(_, i) => String(i)}
-            style={{
-              position: "absolute", top: Platform.OS === "ios" ? 120 : 100, left: 20, right: 20,
-              maxHeight: "70%", backgroundColor: "rgba(20,20,20,0.95)",
-              borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5,
-            }}
-            renderItem={({ item }) => {
-              const title = cleanTitle(item.name || item.title || item.stream_display_name || "Unbekannt");
-              const posterUri = item.cover || item.stream_icon || item.series_image || item.poster || "https://via.placeholder.com/140x180.png?text=Kein+Bild";
-              return (
-                <TouchableOpacity
-                  onPress={() => {
-                    setSearchVisible(false);
-                    navigation.navigate("SeriesDetail", { serie: item });
-                  }}
-                  style={{
-                    flexDirection: "row", alignItems: "center",
-                    paddingVertical: 10, borderBottomWidth: 1, borderColor: "rgba(255,255,255,0.08)",
-                  }}
-                >
-                  <Image source={{ uri: posterUri }} style={{ width: 50, height: 70, borderRadius: 6, marginRight: 12 }} />
-                  <Text style={{ color: "#fff", fontSize: 15 }}>{title}</Text>
-                </TouchableOpacity>
-              );
-            }}
-          />
-        </Animated.View>
-      )}
+      {/* Such-Overlay entfernt */}
     </View>
   );
 }

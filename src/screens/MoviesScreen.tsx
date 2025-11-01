@@ -36,7 +36,7 @@ export default function MoviesScreen() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchVisible, setSearchVisible] = useState(false);
-  const [searchText, setSearchText] = useState("");
+  const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const navigation = useNavigation<any>();
 
@@ -129,7 +129,7 @@ export default function MoviesScreen() {
         }),
       ]).start(() => {
         setSearchVisible(false);
-        setSearchText("");
+        setSearch("");
         setSearchResults([]);
       });
     } else {
@@ -153,7 +153,7 @@ export default function MoviesScreen() {
   // 🔎 Filme durchsuchen
   // ===============================
   const handleSearch = (text: string) => {
-    setSearchText(text);
+    setSearch(text);
     if (!text.trim()) {
       setSearchResults([]);
       return;
@@ -264,39 +264,57 @@ export default function MoviesScreen() {
   // ===============================
   // 🔝 HEADER
   // ===============================
+  // Neue Header-Implementierung wie FavoritesScreen
+  // searchVisible, setSearchVisible, search, setSearch bleiben erhalten
+  // Für Konsistenz: searchText -> search, setSearchText -> setSearch
+  // Wir mappen searchText <-> search, setSearchText <-> setSearch
+  // (Im Original: const [searchText, setSearchText] = useState("");)
+  //const [search, setSearch] = useState("");
+  // searchVisible und setSearchVisible sind schon oben definiert
   return (
     <View style={{ flex: 1, backgroundColor: "#000" }}>
       {/* HEADER */}
       <View
         style={{
           flexDirection: "row",
-          alignItems: "center",
           justifyContent: "space-between",
-          backgroundColor: "#000",
-          paddingTop: Platform.OS === "ios" ? 45 : 25,
+          alignItems: "center",
+          paddingTop: Platform.OS === "ios" ? 50 : 30,
           paddingBottom: 10,
           paddingHorizontal: 14,
-          zIndex: 100,
+          backgroundColor: "#000",
         }}
       >
-        <Text
-          style={{
-            color: "#fff",
-            fontSize: 20,
-            fontWeight: "700",
-            fontFamily: "Orbitron",
-          }}
-        >
-          Movies
-        </Text>
-
-        <TouchableOpacity onPress={toggleSearch}>
-          <Ionicons
-            name={searchVisible ? "close" : "search"}
-            size={22}
-            color="#fff"
-          />
-        </TouchableOpacity>
+        {!searchVisible ? (
+          <>
+            <Text style={{ color: "#fff", fontSize: 20, fontWeight: "700" }}>Filme</Text>
+          </>
+        ) : (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              flex: 1,
+              backgroundColor: "#111",
+              borderRadius: 8,
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+            }}
+          >
+            <Ionicons name="search" size={18} color="#aaa" style={{ marginRight: 6 }} />
+            <TextInput
+              placeholder="Filme durchsuchen..."
+              placeholderTextColor="#888"
+              value={search}
+              onChangeText={setSearch}
+              style={{ color: "#fff", flex: 1, fontSize: 15 }}
+              autoFocus
+            />
+            <TouchableOpacity onPress={() => { setSearchVisible(false); setSearch(""); }}>
+              <Ionicons name="close" size={20} color="#aaa" />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* 🎞️ Movie-Kategorien */}
@@ -392,7 +410,7 @@ export default function MoviesScreen() {
               }}
               placeholder="Film suchen..."
               placeholderTextColor="#aaa"
-              value={searchText}
+              value={search}
               onChangeText={handleSearch}
               autoFocus
             />

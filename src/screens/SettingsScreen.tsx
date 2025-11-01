@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,10 @@ import {
   Platform,
   ScrollView,
   Alert,
+  Modal,
+  Animated,
+  Easing,
+  FlatList,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,6 +21,28 @@ export default function SettingsScreen() {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [selectedLang, setSelectedLang] = useState("DE");
+
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  const openEditModal = () => {
+    setEditModalVisible(true);
+    Animated.timing(slideAnim, {
+      toValue: 1,
+      duration: 300,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeEditModal = () => {
+    Animated.timing(slideAnim, {
+      toValue: 0,
+      duration: 250,
+      easing: Easing.in(Easing.ease),
+      useNativeDriver: true,
+    }).start(() => setEditModalVisible(false));
+  };
 
   const languages = {
     DE: "Deutsch",
@@ -36,18 +62,26 @@ export default function SettingsScreen() {
     })();
   }, []);
 
-  const handleActivateAccount = async (index: number) => {
+  // Account-Wechsel-Logik: Session & Index speichern und Navigation resetten
+  const handleSelectAccount = async (index: number) => {
     try {
-      await AsyncStorage.setItem("active_account_index", String(index));
-      setActiveIndex(index);
-      Alert.alert("✅ Account gewechselt", `${accounts[index].title} ist jetzt aktiv.`);
-      // Navigation erzwingen, damit die App-Daten neu geladen werden
+      const accountsRaw = await AsyncStorage.getItem("iptv_accounts");
+      if (!accountsRaw) return;
+      const accounts = JSON.parse(accountsRaw);
+      const selected = accounts[index];
+      if (!selected) return;
+
+      // Speichere aktive Session & Index
+      await AsyncStorage.setItem("iptv_session", JSON.stringify(selected));
+      await AsyncStorage.setItem("active_account_index", index.toString());
+
+      // Navigation Reset → alle Screens neu laden mit dem neuen Account
       navigation.reset({
         index: 0,
         routes: [{ name: "MainTabs" }],
       });
     } catch (err) {
-      console.error("❌ Fehler beim Aktivieren des Accounts:", err);
+      console.error("❌ Fehler beim Wechseln des Accounts:", err);
     }
   };
 
@@ -69,78 +103,215 @@ export default function SettingsScreen() {
     await AsyncStorage.setItem("preferred_language", lang);
   };
 
+  // Delete confirmation and logic
+  const confirmDelete = (index: number) => {
+    Alert.alert(
+      "Account entfernen",
+      `Möchtest du diesen Account wirklich entfernen?`,
+      [
+        { text: "Abbrechen", style: "cancel" },
+        {
+          text: "Entfernen",
+          style: "destructive",
+          onPress: () => deleteAccount(index),
+        },
+      ]
+    );
+  };
+  const deleteAccount = async (index: number) => {
+    try {
+      const updatedAccounts = [...accounts];
+      updatedAccounts.splice(index, 1);
+      setAccounts(updatedAccounts);
+      await AsyncStorage.setItem("iptv_accounts", JSON.stringify(updatedAccounts));
+      // Wenn der aktive Account entfernt wurde:
+      if (activeIndex === index) {
+        if (updatedAccounts.length > 0) {
+          setActiveIndex(0);
+          await AsyncStorage.setItem("active_account_index", "0");
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "MainTabs" }],
+          });
+        } else {
+          setActiveIndex(null);
+          await AsyncStorage.removeItem("active_account_index");
+          navigation.reset({ index: 0, routes: [{ name: "Login" }] });
+        }
+      } else if (activeIndex !== null && activeIndex > index) {
+        // Wenn ein früherer Account gelöscht wurde, Index anpassen
+        setActiveIndex(activeIndex - 1);
+        await AsyncStorage.setItem("active_account_index", String(activeIndex - 1));
+      }
+    } catch (err) {
+      console.error("❌ Fehler beim Löschen des Accounts:", err);
+    }
+  };
+
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={{ alignItems: "center", paddingBottom: 80 }}
-    >
-      <Text style={styles.header}>⚙️ Einstellungen</Text>
-
-      {/* 👤 Mehrere Accounts anzeigen */}
-      <View style={styles.profileContainer}>
-        {accounts.map((acc, i) => (
-          <TouchableOpacity
-            key={i}
-            style={[
-              styles.accountIcon,
-              activeIndex === i && styles.activeAccount,
-            ]}
-            onPress={() => handleActivateAccount(i)}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="person-outline" size={28} color="#fff" />
-            <Text style={styles.accountLabel} numberOfLines={1}>
-              {acc.title || `Account ${i + 1}`}
-            </Text>
-            {activeIndex === i && (
-              <Text style={styles.activeText}>Aktiv</Text>
-            )}
+    <>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={{ alignItems: "center", paddingBottom: 80 }}
+      >
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20, width: "90%", alignSelf: "center" }}>
+          <Text style={styles.sectionTitle ? styles.sectionTitle : styles.header}>Einstellungen</Text>
+          <TouchableOpacity onPress={openEditModal}>
+            <Text style={{ color: "#E50914", fontSize: 15, fontWeight: "700" }}>Bearbeiten</Text>
           </TouchableOpacity>
-        ))}
+        </View>
 
-        {/* ➕ Account hinzufügen */}
-        <TouchableOpacity
-          style={styles.addAccountIcon}
-          onPress={handleAddAccount}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="add" size={30} color="#fff" />
-          <Text style={styles.accountLabel}>Account hinzufügen</Text>
-        </TouchableOpacity>
-      </View>
-
-      <Text style={styles.subHeader}>Empfehlungssprache</Text>
-      <View style={styles.langContainer}>
-        {Object.entries(languages).map(([code, label]) => (
-          <TouchableOpacity
-            key={code}
-            onPress={() => handleLanguageChange(code)}
-            style={[
-              styles.langButton,
-              selectedLang === code && styles.langButtonActive,
-            ]}
-          >
-            <Text
+        {/* 👤 Mehrere Accounts anzeigen */}
+        <View style={styles.profileContainer}>
+          {accounts.map((acc, i) => (
+            <TouchableOpacity
+              key={i}
               style={[
-                styles.langText,
-                selectedLang === code && styles.langTextActive,
+                styles.accountIcon,
+                activeIndex === i && styles.activeAccount,
+              ]}
+              onPress={() => handleSelectAccount(i)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="person-outline" size={28} color="#fff" />
+              <Text style={styles.accountLabel} numberOfLines={1}>
+                {acc.title || `Account ${i + 1}`}
+              </Text>
+              {activeIndex === i && (
+                <Text style={styles.activeText}>Aktiv</Text>
+              )}
+            </TouchableOpacity>
+          ))}
+
+          {/* ➕ Account hinzufügen */}
+          <TouchableOpacity
+            style={styles.addAccountIcon}
+            onPress={handleAddAccount}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="add" size={30} color="#fff" />
+            <Text style={[styles.accountLabel, { marginTop: 14 }]}>Account hinzufügen</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Abstand zwischen Profil-Icons und Empfehlungssprache */}
+        <View style={{ height: 30 }} />
+
+        <Text style={styles.subHeader}>Empfehlungssprache</Text>
+        <View style={styles.langContainer}>
+          {Object.entries(languages).map(([code, label]) => (
+            <TouchableOpacity
+              key={code}
+              onPress={() => handleLanguageChange(code)}
+              style={[
+                styles.langButton,
+                selectedLang === code && styles.langButtonActive,
               ]}
             >
-              {label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+              <Text
+                style={[
+                  styles.langText,
+                  selectedLang === code && styles.langTextActive,
+                ]}
+              >
+                {label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Abmelden</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutText}>Abmelden</Text>
+        </TouchableOpacity>
 
-      <Text style={styles.info}>
-        Nach dem Abmelden kannst du dich erneut mit deinen Xtream- oder
-        M3U-Daten verbinden.
-      </Text>
-    </ScrollView>
+        <Text style={styles.info}>
+          Nach dem Abmelden kannst du dich erneut mit deinen Xtream- oder
+          M3U-Daten verbinden.
+        </Text>
+      </ScrollView>
+      <Modal transparent visible={editModalVisible} animationType="none">
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)" }}
+          activeOpacity={1}
+          onPress={closeEditModal}
+        />
+        <Animated.View
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: "50%",
+            backgroundColor: "#111",
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            transform: [
+              {
+                translateY: slideAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [400, 0],
+                }),
+              },
+            ],
+            padding: 20,
+          }}
+        >
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700" }}>Profile bearbeiten</Text>
+            <TouchableOpacity onPress={closeEditModal}>
+              <Ionicons name="close" size={26} color="#fff" />
+            </TouchableOpacity>
+          </View>
+          <FlatList
+            data={accounts}
+            keyExtractor={(_, i) => i.toString()}
+            renderItem={({ item, index }) => (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  paddingVertical: 10,
+                  borderBottomColor: "rgba(255,255,255,0.1)",
+                  borderBottomWidth: 1,
+                }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <TouchableOpacity
+                    onPress={() => handleSelectAccount(index)}
+                    style={{
+                      width: 50,
+                      height: 50,
+                      borderRadius: 25,
+                      backgroundColor: "#222",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginRight: 14,
+                    }}
+                  >
+                    <Ionicons name="person-outline" size={24} color="#fff" />
+                  </TouchableOpacity>
+                  <Text style={{ color: "#fff", fontSize: 15 }}>{item.title || `Account ${index + 1}`}</Text>
+                </View>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <TouchableOpacity
+                    onPress={() => confirmDelete(index)}
+                    style={{
+                      backgroundColor: "#E50914",
+                      borderRadius: 8,
+                      paddingVertical: 6,
+                      paddingHorizontal: 14,
+                    }}
+                  >
+                    <Text style={{ color: "#fff", fontWeight: "700" }}>Account entfernen</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          />
+        </Animated.View>
+      </Modal>
+    </>
   );
 }
 
@@ -156,6 +327,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
     marginBottom: 30,
+  },
+  sectionTitle: {
+    color: "#fff",
+    fontSize: 22,
+    fontWeight: "700",
   },
   profileContainer: {
     flexDirection: "row",
