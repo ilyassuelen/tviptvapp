@@ -1,5 +1,18 @@
 import * as ScreenOrientation from "expo-screen-orientation";
-import KeyEvent from "react-native-keyevent";
+let KeyEvent: any;
+try {
+  const mod = require("react-native-keyevent");
+  KeyEvent = mod && typeof mod.onKeyDownListener === "function" ? mod : null;
+} catch (e) {
+  KeyEvent = null;
+}
+if (!KeyEvent) {
+  console.log("ℹ️ KeyEvent not available or incompatible on this platform.");
+  KeyEvent = {
+    onKeyDownListener: () => {},
+    removeKeyDownListener: () => {},
+  };
+}
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform, View, TouchableOpacity, Text, Animated } from "react-native";
@@ -154,69 +167,73 @@ export default function App() {
 
   // Globaler TV-Remote-/DPAD-Handler
   useEffect(() => {
-    try {
-      KeyEvent.onKeyDownListener((keyEvent) => {
-        console.log("📺 TV-Key pressed:", keyEvent.keyCode);
-        switch (keyEvent.keyCode) {
-          case 19: // DPAD_UP
-            {
+    if (Platform.OS === "android" && KeyEvent && KeyEvent.onKeyDownListener) {
+      try {
+        KeyEvent.onKeyDownListener((keyEvent) => {
+          // Guard: menuItems and setActiveScreen must exist
+          if (!SidebarLayout.menuItems || !SidebarLayout.setActiveScreen) return;
+          console.log("📺 TV-Key pressed:", keyEvent.keyCode);
+          switch (keyEvent.keyCode) {
+            case 19: { // DPAD_UP
               console.log("↑ UP");
-              if (initialRoute === "SidebarLayout" && SidebarLayout.menuItems && SidebarLayout.setActiveScreen) {
+              if (initialRoute === "SidebarLayout") {
                 const currentIndex = SidebarLayout.menuItems.findIndex(item => item.name === SidebarLayout._activeScreen);
+                if (currentIndex === -1) return;
                 const newIndex = currentIndex > 0 ? currentIndex - 1 : SidebarLayout.menuItems.length - 1;
                 SidebarLayout.setActiveScreen(SidebarLayout.menuItems[newIndex].name);
                 SidebarLayout._activeScreen = SidebarLayout.menuItems[newIndex].name;
               }
+              break;
             }
-            break;
-          case 20: // DPAD_DOWN
-            {
+            case 20: { // DPAD_DOWN
               console.log("↓ DOWN");
-              if (initialRoute === "SidebarLayout" && SidebarLayout.menuItems && SidebarLayout.setActiveScreen) {
+              if (initialRoute === "SidebarLayout") {
                 const currentIndex = SidebarLayout.menuItems.findIndex(item => item.name === SidebarLayout._activeScreen);
+                if (currentIndex === -1) return;
                 const newIndex = currentIndex < SidebarLayout.menuItems.length - 1 ? currentIndex + 1 : 0;
                 SidebarLayout.setActiveScreen(SidebarLayout.menuItems[newIndex].name);
                 SidebarLayout._activeScreen = SidebarLayout.menuItems[newIndex].name;
               }
+              break;
             }
-            break;
-          case 21: // DPAD_LEFT
-            console.log("← LEFT");
-            break;
-          case 22: // DPAD_RIGHT
-            console.log("→ RIGHT");
-            break;
-          case 23: // DPAD_CENTER / OK
-            console.log("✅ OK pressed");
-            if (initialRoute === "SidebarLayout" && SidebarLayout._activeScreen) {
-              SidebarLayout.setActiveScreen(SidebarLayout._activeScreen);
-            }
-            break;
-          case 4: // BACK
-            console.log("↩️ BACK pressed");
-            if (navigationRef.current) {
-              const routes = navigationRef.current.getRootState()?.routes;
-              const currentRoute = routes && routes[routes.length - 1];
-              if (currentRoute?.name === "Player") {
-                navigationRef.current.goBack();
-              } else {
-                console.log("Back pressed outside Player screen");
+            case 21:
+              console.log("← LEFT");
+              break;
+            case 22:
+              console.log("→ RIGHT");
+              break;
+            case 23:
+              console.log("✅ OK pressed");
+              if (initialRoute === "SidebarLayout" && SidebarLayout._activeScreen) {
+                SidebarLayout.setActiveScreen(SidebarLayout._activeScreen);
               }
-            }
-            break;
-          default:
-            console.log("Other key:", keyEvent.keyCode);
-        }
-      });
-    } catch (e) {
-      console.warn("KeyEvent listener konnte nicht initialisiert werden:", e);
-    }
+              break;
+            case 4:
+              console.log("↩️ BACK pressed");
+              if (navigationRef.current) {
+                const routes = navigationRef.current.getRootState()?.routes;
+                const currentRoute = routes && routes[routes.length - 1];
+                if (currentRoute?.name === "Player") {
+                  navigationRef.current.goBack();
+                } else {
+                  console.log("Back pressed outside Player screen");
+                }
+              }
+              break;
+            default:
+              console.log("Other key:", keyEvent.keyCode);
+          }
+        });
+      } catch (e) {
+        console.warn("⚠️ KeyEvent listener konnte nicht initialisiert werden:", e);
+      }
 
-    return () => {
-      try {
-        KeyEvent.removeKeyDownListener();
-      } catch (e) {}
-    };
+      return () => {
+        try {
+          KeyEvent?.removeKeyDownListener?.();
+        } catch (e) {}
+      };
+    }
   }, [initialRoute]);
 
   useEffect(() => {

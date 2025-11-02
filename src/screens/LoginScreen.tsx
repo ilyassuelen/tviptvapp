@@ -10,16 +10,28 @@ import {
   Platform,
   Alert,
   ScrollView,
-  TVEventHandler,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+// Safe fallback for TVEventHandler to prevent crashes on unsupported devices
+const SafeTVEventHandler = (() => {
+  try {
+    const { TVEventHandler } = require("react-native");
+    return TVEventHandler;
+  } catch {
+    return class {
+      enable() {}
+      disable() {}
+    };
+  }
+})();
+
 function useTVNavigation(actions: Array<() => void>) {
   const [focusedIndex, setFocusedIndex] = useState(0);
-  const tvEventHandler = useRef<TVEventHandler | null>(null);
+  const tvEventHandler = useRef<any>(null);
 
   useEffect(() => {
-    tvEventHandler.current = new TVEventHandler();
+    tvEventHandler.current = new SafeTVEventHandler();
     tvEventHandler.current.enable(null, (cmp, evt) => {
       if (!evt || !evt.eventType) return;
       if (evt.eventType === "right") setFocusedIndex((prev) => Math.min(prev + 1, actions.length - 1));
