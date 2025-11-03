@@ -1,5 +1,25 @@
 import React, { useEffect, useState, useRef } from "react";
-import { useTVEventHandler } from "react-native";
+
+// --- Safe TV Event Handler (cross-platform) ---
+import { useEffect as useEffectOrig } from "react";
+
+const useSafeTVEventHandler = (handler?: (evt: any) => void) => {
+  useEffectOrig(() => {
+    let TVEventHandler: any;
+    try {
+      TVEventHandler = require("react-native").TVEventHandler;
+    } catch {
+      console.log("ℹ️ KeyEvent not available or incompatible on this platform.");
+      return;
+    }
+    if (!TVEventHandler) return;
+    const handlerInstance = new TVEventHandler();
+    handlerInstance.enable(null, (cmp: any, evt: any) => {
+      if (handler) handler(evt);
+    });
+    return () => handlerInstance.disable();
+  }, [handler]);
+};
 import {
   View,
   Text,
@@ -30,7 +50,7 @@ export default function HomeScreen() {
       console.log("📺 TV-Event:", evt.eventType);
     }
   };
-  useTVEventHandler(tvEventHandler);
+  useSafeTVEventHandler(tvEventHandler);
   const [movies, setMovies] = useState<any[]>([]);
   const [series, setSeries] = useState<any[]>([]);
   const [fontsLoaded, setFontsLoaded] = useState(false);

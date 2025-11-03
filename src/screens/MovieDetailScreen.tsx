@@ -13,12 +13,29 @@ import {
   PanResponder,
   Image,
   ScrollView,
-  TVEventHandler,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
+// Safe TVEventHandler fallback for devices that don't implement it
+const SafeTVEventHandler = (() => {
+  try {
+    const rn = require("react-native");
+    if (rn && typeof rn.TVEventHandler === "function") {
+      return rn.TVEventHandler;
+    }
+  } catch (err) {
+    console.log("ℹ️ TVEventHandler unavailable:", err);
+  }
+
+  // Sicherer Dummy-Fallback, der niemals undefined ist
+  function DummyTVEventHandler() {}
+  DummyTVEventHandler.prototype.enable = () => {};
+  DummyTVEventHandler.prototype.disable = () => {};
+  return DummyTVEventHandler;
+})();
 
 const { height } = Dimensions.get("window");
 
@@ -135,27 +152,53 @@ function extractFilmInfo(text?: string): { year?: string; genre?: string } {
 
 function useTVNavigation(actions: Array<() => void>) {
   const [focusedIndex, setFocusedIndex] = useState(0);
-  const tvEventHandler = useRef<TVEventHandler | null>(null);
+  const tvEventHandler = useRef<any>(null);
 
   useEffect(() => {
-    tvEventHandler.current = new TVEventHandler();
-    tvEventHandler.current.enable(null, (cmp, evt) => {
+    if (typeof SafeTVEventHandler !== "function") {
+      console.log("⚠️ SafeTVEventHandler unavailable or invalid. TV navigation disabled.");
+      return;
+    }
+    tvEventHandler.current = new SafeTVEventHandler();
+    tvEventHandler.current.enable?.(null, (cmp: any, evt: any) => {
       if (!evt || !evt.eventType) return;
       if (evt.eventType === "right") setFocusedIndex((prev) => Math.min(prev + 1, actions.length - 1));
       if (evt.eventType === "left") setFocusedIndex((prev) => Math.max(prev - 1, 0));
       if (evt.eventType === "select") actions[focusedIndex]?.();
     });
-    return () => tvEventHandler.current?.disable();
+    return () => {
+      try {
+        tvEventHandler.current?.disable?.();
+      } catch {}
+    };
   }, [focusedIndex, actions]);
 
   return focusedIndex;
 }
 
+// Fallback stub: fetchCastFromWikipediaHTML
+async function fetchCastFromWikipediaHTML(lang: "de" | "en", pageTitle: string) {
+  // Fallback stub: return empty list if the HTML scraping helper isn't available
+  return [];
+}
+
 // 🎬 Hauptkomponente
 export default function MovieDetailScreen() {
-  const route = useRoute<any>();
+  const route = useRoute();
   const navigation = useNavigation<any>();
-  const { movie } = route.params;
+  const { movie } = (route as any)?.params ?? {};
+  if (!movie) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#000", justifyContent: "center", alignItems: "center" }}>
+        <Text style={{ color: "#fff", fontSize: 16, padding: 16, textAlign: "center" }}>
+          Fehler: Keine Filmdaten übergeben. Bitte gehe zurück und wähle einen Film erneut aus.
+        </Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 12, paddingVertical: 10, paddingHorizontal: 18, backgroundColor: "#E50914", borderRadius: 8 }}>
+          <Text style={{ color: "#fff", fontWeight: "700" }}>Zurück</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   const poster =
     movie.stream_icon ||

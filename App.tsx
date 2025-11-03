@@ -282,6 +282,7 @@ export default function App() {
         >
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="SidebarLayout" component={SidebarLayout} />
+          <Stack.Screen name="MainTabs" component={SidebarLayout} />
           <Stack.Screen name="Search" component={SearchScreen} />
           <Stack.Screen name="MovieDetail" component={MovieDetailScreen} />
           <Stack.Screen name="SeriesDetail" component={SeriesDetailScreen} />

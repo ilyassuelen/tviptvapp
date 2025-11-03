@@ -14,17 +14,20 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Safe fallback for TVEventHandler to prevent crashes on unsupported devices
-const SafeTVEventHandler = (() => {
-  try {
-    const { TVEventHandler } = require("react-native");
-    return TVEventHandler;
-  } catch {
-    return class {
-      enable() {}
-      disable() {}
-    };
-  }
-})();
+let SafeTVEventHandler: any;
+try {
+  const RN = require("react-native");
+  SafeTVEventHandler = RN.TVEventHandler || class {
+    enable() {}
+    disable() {}
+  };
+} catch (e) {
+  console.log("ℹ️ TVEventHandler not available, using fallback.");
+  SafeTVEventHandler = class {
+    enable() {}
+    disable() {}
+  };
+}
 
 function useTVNavigation(actions: Array<() => void>) {
   const [focusedIndex, setFocusedIndex] = useState(0);
@@ -32,6 +35,10 @@ function useTVNavigation(actions: Array<() => void>) {
 
   useEffect(() => {
     tvEventHandler.current = new SafeTVEventHandler();
+    if (!tvEventHandler.current || typeof tvEventHandler.current.enable !== "function") {
+      console.warn("⚠️ TVEventHandler not supported on this device.");
+      return;
+    }
     tvEventHandler.current.enable(null, (cmp, evt) => {
       if (!evt || !evt.eventType) return;
       if (evt.eventType === "right") setFocusedIndex((prev) => Math.min(prev + 1, actions.length - 1));
@@ -45,6 +52,10 @@ function useTVNavigation(actions: Array<() => void>) {
 }
 
 export default function LoginScreen({ navigation }: any) {
+  if (!navigation || typeof navigation.reset !== "function") {
+    console.warn("⚠️ Navigation object missing or invalid. Skipping navigation reset.");
+    return null;
+  }
   const [accountTitle, setAccountTitle] = useState("");
   const [serverUrl, setServerUrl] = useState("");
   const [username, setUsername] = useState("");
@@ -93,9 +104,15 @@ export default function LoginScreen({ navigation }: any) {
         title: accountTitle.trim(),
       };
 
-      // Bestehende Accounts laden
-      const stored = await AsyncStorage.getItem("iptv_accounts");
-      let accounts = stored ? JSON.parse(stored) : [];
+      // Bestehende Accounts laden (robuster JSON-Parse mit Fehlerbehandlung)
+      let accounts: any[] = [];
+      try {
+        const stored = await AsyncStorage.getItem("iptv_accounts");
+        if (stored) accounts = JSON.parse(stored);
+      } catch (err) {
+        console.warn("⚠️ Fehler beim Lesen der gespeicherten Accounts:", err);
+        accounts = [];
+      }
 
       // Prüfen, ob Titel bereits existiert
       const existingIndex = accounts.findIndex(
