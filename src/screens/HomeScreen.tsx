@@ -1,25 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
-
-// --- Safe TV Event Handler (cross-platform) ---
-import { useEffect as useEffectOrig } from "react";
-
-const useSafeTVEventHandler = (handler?: (evt: any) => void) => {
-  useEffectOrig(() => {
-    let TVEventHandler: any;
-    try {
-      TVEventHandler = require("react-native").TVEventHandler;
-    } catch {
-      console.log("ℹ️ KeyEvent not available or incompatible on this platform.");
-      return;
-    }
-    if (!TVEventHandler) return;
-    const handlerInstance = new TVEventHandler();
-    handlerInstance.enable(null, (cmp: any, evt: any) => {
-      if (handler) handler(evt);
-    });
-    return () => handlerInstance.disable();
-  }, [handler]);
-};
+import { Keyboard } from "react-native";
+import { useTVEventHandler } from "react-native";
 import {
   View,
   Text,
@@ -41,18 +22,66 @@ import { LinearGradient } from "expo-linear-gradient";
 
 export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
-  // TV-Focus state
-  const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  // TV-Focus state pro Kategorie
+  const [focusedMovieIndex, setFocusedMovieIndex] = useState<number | null>(0);
+  const [focusedSeriesIndex, setFocusedSeriesIndex] = useState<number | null>(null);
+  const [focusedTopMovieIndex, setFocusedTopMovieIndex] = useState<number | null>(null);
+  const [focusedTopSeriesIndex, setFocusedTopSeriesIndex] = useState<number | null>(null);
 
-  // TV remote event handler
-  const tvEventHandler = (evt: any) => {
-    if (evt && evt.eventType) {
-      console.log("📺 TV-Event:", evt.eventType);
+  // Fokus-Helfer für alle Reihen
+  const getFocusedIndexByType = (type: "movie" | "serie" | "topMovie" | "topSerie") => {
+    switch (type) {
+      case "movie": return focusedMovieIndex;
+      case "serie": return focusedSeriesIndex;
+      case "topMovie": return focusedTopMovieIndex;
+      case "topSerie": return focusedTopSeriesIndex;
+      default: return null;
     }
   };
-  useSafeTVEventHandler(tvEventHandler);
+  const setFocusedIndexByType = (type: "movie" | "serie" | "topMovie" | "topSerie", index: number | null) => {
+    switch (type) {
+      case "movie": setFocusedMovieIndex(index); break;
+      case "serie": setFocusedSeriesIndex(index); break;
+      case "topMovie": setFocusedTopMovieIndex(index); break;
+      case "topSerie": setFocusedTopSeriesIndex(index); break;
+    }
+  };
+
+  // TV-Remote Fokussteuerung für Film-Empfehlungen (nur Pfeiltasten links/rechts)
   const [movies, setMovies] = useState<any[]>([]);
   const [series, setSeries] = useState<any[]>([]);
+  const [topMovies, setTopMovies] = useState<any[]>([]);
+  const [topSeries, setTopSeries] = useState<any[]>([]);
+
+  // TV Fokus Navigation für Android TV / Fire TV
+  useTVEventHandler((evt) => {
+    if (!evt || !evt.eventType) return;
+    switch (evt.eventType) {
+      case "right":
+        setFocusedMovieIndex((prev) =>
+          prev === null ? 0 : Math.min(prev + 1, movies.length - 1)
+        );
+        break;
+      case "left":
+        setFocusedMovieIndex((prev) =>
+          prev === null ? 0 : Math.max(prev - 1, 0)
+        );
+        break;
+      case "down":
+        if (focusedMovieIndex !== null) setFocusedSeriesIndex(0);
+        break;
+      case "up":
+        if (focusedSeriesIndex !== null) setFocusedMovieIndex(0);
+        break;
+      case "select":
+        if (focusedMovieIndex !== null && movies[focusedMovieIndex]) {
+          navigation.navigate("MovieDetail", { movie: movies[focusedMovieIndex] });
+        }
+        break;
+      default:
+        break;
+    }
+  });
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const [language, setLanguage] = useState("DE");
   const [availableLangs, setAvailableLangs] = useState<string[]>([]);
@@ -60,9 +89,6 @@ export default function HomeScreen() {
   const [history, setHistory] = useState<any[]>([]); // ⬅️ NEU
   const [latestMovie, setLatestMovie] = useState<any | null>(null); // ⬅️ NEW
   const [isFavorite, setIsFavorite] = useState(false);
-  // 🔝 Top 10 by Rating
-  const [topMovies, setTopMovies] = useState<any[]>([]);
-  const [topSeries, setTopSeries] = useState<any[]>([]);
 
   const toggleFavorite = async () => {
     try {
@@ -443,7 +469,12 @@ const extractYearFromTitle = (title: string) => {
   const cleanTitle = (t: string) =>
     t?.replace(/^.*?-\s*/i, "").replace(/\(.*?\)/g, "").trim();
 
-  const renderItem = (item: any, i: number, type: "movie" | "serie") => {
+  // renderItem erweitert für Typen und Fokus pro Kategorie
+  const renderItem = (
+    item: any,
+    i: number,
+    type: "movie" | "serie" | "topMovie" | "topSerie"
+  ) => {
     // 📊 Rating berechnen (robust)
     let displayRating = null;
     if (item.rating !== undefined && item.rating !== null && item.rating !== "") {
@@ -459,46 +490,58 @@ const extractYearFromTitle = (title: string) => {
       cleanTitle(item.name || item.title || item.stream_display_name) ||
       "Unbekannt";
 
+    // Fokus-Logik für alle Reihen per TV-Fokus
+    const focused = getFocusedIndexByType(type) === i;
+
     return (
       <View key={i} style={{ marginRight: 18, alignItems: "center" }}>
         <Text style={styles.indexText}>{i + 1}</Text>
-        <TouchableOpacity
-          hasTVPreferredFocus={i === 0}
-          focusable={true}
-          onFocus={() => setFocusedIndex(i)}
-          onBlur={() => setFocusedIndex(null)}
-          activeOpacity={0.9}
-          onPress={() =>
-            navigation.navigate(
-              type === "movie" ? "MovieDetail" : "SeriesDetail",
-              type === "movie" ? { movie: item } : { serie: item }
-            )
-          }
+        <View
           style={[
             styles.posterContainer,
-            focusedIndex === i && { borderColor: "#E50914", borderWidth: 3 },
+            focused && styles.posterFocused,
           ]}
         >
-          <Image source={{ uri: getValidPoster(item) }} style={styles.posterImage} resizeMode="cover" />
-          {/* Glass gradient overlay at bottom */}
-          <LinearGradient
-            colors={["transparent", "rgba(0,0,0,0.55)", "rgba(0,0,0,0.85)"]}
-            style={styles.posterGradient}
-          />
-          {/* Title inside image footer */}
-          <View style={styles.posterFooter}>
-            <Text style={styles.posterTitle} numberOfLines={1}>
-              {title}
-            </Text>
-          </View>
-          {/* Rating badge (monochrome) */}
-          {displayRating !== null && (
-            <View style={styles.ratingBadge}>
-              <Ionicons name="star" size={12} color="#FFFFFF" />
-              <Text style={styles.ratingText}>{displayRating.toFixed(1)}</Text>
+          <TouchableOpacity
+            hasTVPreferredFocus={i === 0}
+            focusable={true}
+            activeOpacity={0.9}
+            onPress={() =>
+              navigation.navigate(
+                (type === "movie" || type === "topMovie") ? "MovieDetail" : "SeriesDetail",
+                (type === "movie" || type === "topMovie") ? { movie: item } : { serie: item }
+              )
+            }
+            style={{ flex: 1 }}
+            onFocus={() => setFocusedIndexByType(type, i)}
+            onBlur={() => setFocusedIndexByType(type, null)}
+            importantForAccessibility="yes"
+          >
+            <Image
+              source={{ uri: getValidPoster(item) }}
+              style={[
+                styles.posterImage,
+                focused && { transform: [{ scale: 1.05 }] },
+              ]}
+              resizeMode="cover"
+            />
+            <LinearGradient
+              colors={["transparent", "rgba(0,0,0,0.55)", "rgba(0,0,0,0.85)"]}
+              style={styles.posterGradient}
+            />
+            <View style={styles.posterFooter}>
+              <Text style={styles.posterTitle} numberOfLines={1}>
+                {title}
+              </Text>
             </View>
-          )}
-        </TouchableOpacity>
+            {displayRating !== null && (
+              <View style={styles.ratingBadge}>
+                <Ionicons name="star" size={12} color="#FFFFFF" />
+                <Text style={styles.ratingText}>{displayRating.toFixed(1)}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
@@ -716,7 +759,7 @@ const extractYearFromTitle = (title: string) => {
             Film Empfehlungen ({languageLabels[language] || language})
           </Text>
           <View style={styles.sectionDivider} />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 25 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} focusable={false} style={{ marginBottom: 25 }}>
             <View style={{ flexDirection: "row" }}>
               {movies.length ? movies.map((m, i) => renderItem(m, i, "movie")) : (
                 <Text style={{ color: "#aaa" }}>Keine Filme gefunden</Text>
@@ -727,7 +770,7 @@ const extractYearFromTitle = (title: string) => {
             Serien Empfehlungen ({languageLabels[language] || language})
           </Text>
           <View style={styles.sectionDivider} />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} focusable={false}>
             <View style={{ flexDirection: "row" }}>
               {series.length ? series.map((s, i) => renderItem(s, i, "serie")) : (
                 <Text style={{ color: "#aaa" }}>Keine Serien gefunden</Text>
@@ -758,7 +801,7 @@ const extractYearFromTitle = (title: string) => {
                 <Text style={{ color: "#888", fontSize: 13, textDecorationLine: "underline" }}>Verlauf leeren</Text>
               </TouchableOpacity>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} focusable={false}>
               <View style={{ flexDirection: "row" }}>
                 {history.map((item, i) => (
                   <TouchableOpacity
@@ -791,9 +834,9 @@ const extractYearFromTitle = (title: string) => {
         <View style={{ marginTop: 40, paddingHorizontal: 12 }}>
           <Text style={styles.sectionTitle}>Bestbewertete Filme</Text>
           <View style={styles.sectionDivider} />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} focusable={false}>
             <View style={{ flexDirection: "row" }}>
-              {topMovies.length ? topMovies.map((m, i) => renderItem(m, i, "movie")) : (
+              {topMovies.length ? topMovies.map((m, i) => renderItem(m, i, "topMovie")) : (
                 <Text style={{ color: "#aaa" }}>Keine Top-Filme gefunden</Text>
               )}
             </View>
@@ -803,9 +846,9 @@ const extractYearFromTitle = (title: string) => {
         <View style={{ marginTop: 40, paddingHorizontal: 12, marginBottom: 30 }}>
           <Text style={styles.sectionTitle}>Bestbewertete Serien</Text>
           <View style={styles.sectionDivider} />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} focusable={false}>
             <View style={{ flexDirection: "row" }}>
-              {topSeries.length ? topSeries.map((s, i) => renderItem(s, i, "serie")) : (
+              {topSeries.length ? topSeries.map((s, i) => renderItem(s, i, "topSerie")) : (
                 <Text style={{ color: "#aaa" }}>Keine Top-Serien gefunden</Text>
               )}
             </View>
@@ -910,8 +953,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#121212",
     borderRadius: 12,
     overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.05)",
+    // borderWidth and borderColor removed to prevent focus highlight conflicts
+  },
+  posterFocused: {
+    transform: [{ scale: 1.08 }],
+    borderColor: "rgba(255,255,255,0.8)",
+    borderWidth: 2,
+    shadowColor: "#FFFFFF",
+    shadowOpacity: 0.6,
+    shadowRadius: 10,
   },
   posterImage: {
     width: "100%",
